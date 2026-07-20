@@ -1,70 +1,128 @@
-# AFO — Advanced File Organizer v2.0
+# AFO — Advanced File Organizer
 
-Cross-platform desktop file organizer built with Tauri (Rust backend + React frontend).
+Cross-platform desktop file organization application built with Tauri v2 (Rust backend) and React (TypeScript frontend).
 
 ## Features
 
-- **Organize by extension** — auto-sort files into categories (images, documents, audio, video, archives, code)
-- **Organize by date** — sort files into year/month folders
-- **Batch rename** — pattern templates with `{name}`, `{ext}`, `{counter}` placeholders
-- **Rule engine** — JSON-serialized condition/action pairs (Phase 3)
-- **Duplicate detection** — blake3 content hashing with rayon parallelism (Phase 4)
-- **Metadata extraction** — EXIF and audio tags (Phase 5)
-- **Undo/redo** — reversible operations via SQLite journal (Phase 6)
-- **Real-time folder watching** — auto-organize as files land (Phase 7)
-- **Scheduled automation** — cron-like periodic runs (Phase 8)
-- **Command palette** — Cmd/Ctrl+K quick actions (Phase 9)
+- **One-click file sorting** by extension, date, or custom rules
+- **Duplicate detection** with blake3 hashing and parallel scanning
+- **Batch rename** with pattern templates (`{name}`, `{ext}`, `{counter}`)
+- **Visual rule builder** with node-based editor (React Flow)
+- **Metadata extraction** from EXIF and audio tags
+- **Real-time folder watching** with configurable directories
+- **Undo/redo** with full file operation reversal
+- **Scheduled automation** with cron expressions
+- **Command palette** (Cmd/Ctrl+K) for quick navigation
+- **Dark theme** with fluid animations
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Backend | Rust + Tauri v2 |
-| Frontend | React 18 + TypeScript + Vite 5 |
-| Styling | Tailwind CSS 3.4 |
-| Animation | Framer Motion 11 |
-| State | Zustand 4 |
-| Rule Builder | ReactFlow 11 |
+|-------|------------|
+| Backend | Rust, Tauri v2, Tokio |
+| Frontend | React 18, TypeScript, Vite |
+| Styling | Tailwind CSS |
+| State | Zustand |
+| Animation | Framer Motion |
+| Rule Editor | React Flow |
 | Hashing | blake3 |
 | Parallelism | rayon |
-| File watching | notify 6 |
-| Journal | rusqlite (SQLite) |
+| File Watching | notify |
+| Database | SQLite (rusqlite) |
+| Scheduling | tokio-cron-scheduler |
 
-## Development
+## Prerequisites
+
+- **Rust** (stable): [rustup.rs](https://rustup.rs/)
+- **Node.js** 20+: [nodejs.org](https://nodejs.org/)
+- **System dependencies** (Linux):
+  ```bash
+  sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
+  ```
+
+## Installation
 
 ```bash
-# Install dependencies
+# Clone the repository
+git clone https://github.com/anorak999/AF0.git
+cd AF0
+
+# Install frontend dependencies
 npm install
 
-# Start dev server
+# Run in development mode
 cargo tauri dev
 
 # Build for production
 cargo tauri build
 ```
 
+## Development
+
+```bash
+# Frontend dev server (hot reload)
+npm run dev
+
+# Rust backend (hot reload)
+cargo tauri dev
+
+# Type checking
+npx tsc --noEmit
+
+# Linting
+npm run lint
+
+# Formatting
+npm run format
+```
+
 ## Project Structure
 
 ```
 afo/
-├── src-tauri/              # Rust backend
-│   ├── core/               # Business logic modules
-│   │   ├── organizer.rs    # File organization
-│   │   ├── rule_engine.rs  # Condition/action rules
-│   │   ├── duplicates.rs   # Duplicate detection
-│   │   ├── metadata.rs     # EXIF/audio extraction
-│   │   ├── journal.rs      # Undo/redo log
-│   │   ├── watcher.rs      # Folder watching
-│   │   ├── scheduler.rs    # Cron automation
-│   │   └── cloud_sync.rs   # Cloud sync stub
-│   ├── commands.rs         # Tauri IPC handlers
-│   └── main.rs
-├── src/                    # React frontend
-│   ├── components/         # UI components
-│   ├── lib/tauri-bridge.ts # Typed IPC wrappers
+├── src-tauri/                 # Rust backend
+│   ├── src/
+│   │   ├── main.rs           # Entry point
+│   │   ├── lib.rs            # Tauri builder
+│   │   ├── commands.rs       # IPC command handlers
+│   │   └── core/
+│   │       ├── organizer.rs  # File organization engine
+│   │       ├── rule_engine.rs # Rule evaluation
+│   │       ├── duplicates.rs # Duplicate detection
+│   │       ├── metadata.rs   # EXIF/audio extraction
+│   │       ├── journal.rs    # Undo/redo system
+│   │       ├── watcher.rs    # Folder watching
+│   │       └── scheduler.rs  # Cron automation
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── src/                       # React frontend
+│   ├── components/
+│   │   ├── Sidebar/
+│   │   ├── OrganizePanel/
+│   │   ├── RuleBuilder/
+│   │   ├── DuplicatesPanel/
+│   │   ├── HistoryPanel/
+│   │   ├── CommandPalette/
+│   │   └── SettingsPanel/
+│   ├── lib/
+│   │   ├── store.ts          # Zustand store
+│   │   └── tauri-bridge.ts   # IPC wrappers
 │   └── App.tsx
-└── tauri.conf.json
+├── package.json
+├── vite.config.ts
+└── tailwind.config.js
 ```
+
+## Data Locations
+
+| Data | Location |
+|------|----------|
+| Config | `~/.config/afo/config.json` |
+| Rules | `~/.config/afo/rules.json` |
+| Schedules | `~/.config/afo/schedules.json` |
+| Journal | `~/.local/share/afo/journal.db` |
+| Quarantine | `~/.local/share/afo/quarantine/` |
+| Logs | `~/.local/share/afo/afo.log` |
 
 ## License
 

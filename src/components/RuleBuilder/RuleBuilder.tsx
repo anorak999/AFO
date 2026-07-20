@@ -7,6 +7,7 @@ import {
   type RuleCondition,
   type RuleAction,
 } from "../../lib/tauri-bridge";
+import RuleFlowEditor from "./RuleFlowEditor";
 
 const FIELDS: RuleCondition["field"][] = [
   "Extension",
@@ -68,6 +69,10 @@ export default function RuleBuilder() {
   const [dryRunPath, setDryRunPath] = useState("");
   const [dryRunResult, setDryRunResult] = useState("");
 
+  // View mode: "list" or "flow"
+  const [viewMode, setViewMode] = useState<"list" | "flow">("list");
+  const [flowEditing, setFlowEditing] = useState<Rule | null>(null);
+
   const refresh = useCallback(async () => {
     try {
       setRules(await listRules());
@@ -88,10 +93,53 @@ export default function RuleBuilder() {
   }
 
   function startEdit(rule: Rule) {
-    setEditing(rule.id);
-    setFormName(rule.name);
-    setFormConditions(rule.conditions.length ? [...rule.conditions] : [emptyCondition()]);
-    setFormActions(rule.actions.length ? [...rule.actions] : [emptyAction()]);
+    if (viewMode === "flow") {
+      setFlowEditing(rule);
+    } else {
+      setEditing(rule.id);
+      setFormName(rule.name);
+      setFormConditions(rule.conditions.length ? [...rule.conditions] : [emptyCondition()]);
+      setFormActions(rule.actions.length ? [...rule.actions] : [emptyAction()]);
+    }
+  }
+
+  function startCreateFlow() {
+    const newRule: Rule = {
+      id: makeId(),
+      name: "New Rule",
+      enabled: true,
+      conditions: [],
+      actions: [],
+    };
+    setFlowEditing(newRule);
+  }
+
+  async function handleFlowSave(conditions: RuleCondition[], actions: RuleAction[]) {
+    if (!flowEditing) return;
+    const updated =
+      flowEditing.id && rules.some((r) => r.id === flowEditing.id)
+        ? rules.map((r) =>
+            r.id === flowEditing.id
+              ? { ...r, conditions, actions }
+              : r
+          )
+        : [
+            ...rules,
+            {
+              id: flowEditing.id,
+              name: flowEditing.name,
+              enabled: true,
+              conditions,
+              actions,
+            },
+          ];
+    try {
+      await saveRules(updated);
+      setRules(updated);
+      setFlowEditing(null);
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   function cancel() {
@@ -178,16 +226,50 @@ export default function RuleBuilder() {
             Define conditions and actions to organize files automatically.
           </p>
         </div>
-        <button
-          onClick={startCreate}
-          className="shrink-0 rounded-xl bg-afo-purple px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-afo-purple/80"
-        >
-          Create Rule
-        </button>
+        <div className="flex items-center gap-3">
+          {/* View mode toggle */}
+          <div className="flex gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === "list"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/60"
+              }`}
+            >
+              List
+            </button>
+            <button
+              onClick={() => setViewMode("flow")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === "flow"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/60"
+              }`}
+            >
+              Visual
+            </button>
+          </div>
+          <button
+            onClick={viewMode === "flow" ? startCreateFlow : startCreate}
+            className="shrink-0 rounded-xl bg-afo-purple px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-afo-purple/80"
+          >
+            Create Rule
+          </button>
+        </div>
       </div>
 
       {error && (
         <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{error}</p>
+      )}
+
+      {/* Flow editor */}
+      {flowEditing && (
+        <RuleFlowEditor
+          rule={flowEditing}
+          onSave={handleFlowSave}
+          onCancel={() => setFlowEditing(null)}
+        />
       )}
 
       {/* Rules list */}

@@ -102,6 +102,10 @@ export async function deleteDuplicates(groups: DuplicateGroup[], indices: number
   return invoke("delete_duplicates_cmd", { groups, indices });
 }
 
+export async function cleanupQuarantine(maxAgeDays?: number): Promise<number> {
+  return invoke<number>("cleanup_quarantine_cmd", { maxAgeDays });
+}
+
 // Journal
 export interface JournalEntry {
   id: number;

@@ -6,6 +6,7 @@ use crate::core::rule_engine;
 use crate::core::scheduler;
 use crate::core::watcher;
 use tauri::Emitter;
+use tracing::{info, warn, instrument};
 
 #[derive(Clone, serde::Serialize)]
 pub struct ProgressEvent {
@@ -16,16 +17,20 @@ pub struct ProgressEvent {
 }
 
 #[tauri::command]
+#[instrument(skip(path), fields(path = %path))]
 pub async fn scan_directory(path: String) -> Result<Vec<organizer::FileInfo>, String> {
+    info!("Scanning directory");
     organizer::scan_directory(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
+#[instrument(skip(app), fields(path = %path, dry_run))]
 pub async fn organize_by_extension(
     app: tauri::AppHandle,
     path: String,
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
+    info!("Organizing by extension");
     let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
     let config = organizer::CategoryConfig::load();
     let mut result = organizer::OrganizeResult {
@@ -54,7 +59,10 @@ pub async fn organize_by_extension(
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
             match std::fs::rename(&file.path, &target_file) {
                 Ok(()) => result.moved += 1,
-                Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+                Err(e) => {
+                    warn!(error = %e, file = %file.name, "Failed to move file");
+                    result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                }
             }
         }
 
@@ -66,15 +74,18 @@ pub async fn organize_by_extension(
         });
     }
 
+    info!(moved = result.moved, skipped = result.skipped, "Organize complete");
     Ok(result)
 }
 
 #[tauri::command]
+#[instrument(skip(app), fields(path = %path, dry_run))]
 pub async fn organize_by_date(
     app: tauri::AppHandle,
     path: String,
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
+    info!("Organizing by date");
     let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
     let mut result = organizer::OrganizeResult {
         total_files: files.len(),
@@ -105,7 +116,10 @@ pub async fn organize_by_date(
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
             match std::fs::rename(&file.path, &target_file) {
                 Ok(()) => result.moved += 1,
-                Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+                Err(e) => {
+                    warn!(error = %e, file = %file.name, "Failed to move file");
+                    result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                }
             }
         }
 
@@ -117,6 +131,7 @@ pub async fn organize_by_date(
         });
     }
 
+    info!(moved = result.moved, skipped = result.skipped, "Organize by date complete");
     Ok(result)
 }
 
@@ -217,6 +232,13 @@ pub async fn delete_duplicates_cmd(
     indices: Vec<usize>,
 ) -> Result<(), String> {
     duplicates::delete_duplicates(&groups, &indices).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn cleanup_quarantine_cmd(max_age_days: Option<u64>) -> Result<u64, String> {
+    let days = max_age_days.unwrap_or(30);
+    info!(max_age_days = days, "Cleaning up quarantine");
+    duplicates::cleanup_quarantine(days).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

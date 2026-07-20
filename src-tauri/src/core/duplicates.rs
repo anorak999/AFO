@@ -227,3 +227,35 @@ pub fn delete_duplicates(
     }
     Ok(())
 }
+
+/// Clean up quarantined files older than the specified number of days
+pub fn cleanup_quarantine(max_age_days: u64) -> Result<u64, Box<dyn Error>> {
+    let base = quarantine_base();
+    if !base.exists() {
+        return Ok(0);
+    }
+
+    let max_age = std::time::Duration::from_secs(max_age_days * 24 * 60 * 60);
+    let now = std::time::SystemTime::now();
+    let mut removed = 0u64;
+
+    for entry in fs::read_dir(&base)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            // Check directory modification time
+            let metadata = fs::metadata(&path)?;
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(age) = now.duration_since(modified) {
+                    if age > max_age {
+                        fs::remove_dir_all(&path)?;
+                        removed += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(removed)
+}
