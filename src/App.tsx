@@ -5,6 +5,7 @@ import RuleBuilder from "./components/RuleBuilder";
 import DuplicatesPanel from "./components/DuplicatesPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
+import CommandPalette from "./components/CommandPalette";
 
 function ActivePanel() {
   const activePanel = useAppStore((s) => s.activePanel);
@@ -30,6 +31,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         <ActivePanel />
       </main>
+      <CommandPalette />
     </div>
   );
 }

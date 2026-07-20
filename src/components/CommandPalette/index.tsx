@@ -1,3 +1,1 @@
-export default function CommandPalette() {
-  return null; // Phase 9
-}
+export { default } from "./CommandPalette";
