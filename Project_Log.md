@@ -438,3 +438,55 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo fmt --check` — ✅ Clean
 - `cargo clippy -- -D warnings` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2025-07-21 — Phase 4, 5, 6 Complete
+
+### Phase 4: Duplicate Detection — COMPLETED
+- Progress events during parallel hashing:
+  - Added `Arc<AtomicUsize>` for thread-safe progress tracking
+  - `processed` counter incremented after each file hash
+  - `get_scan_progress()` helper function added
+- All items marked [x] in TODO.md
+
+### Phase 5: Metadata Extraction — COMPLETED
+- Extended rule engine conditions:
+  - Added EXIF fields: `ExifCameraMake`, `ExifCameraModel`, `ExifDateTaken`, `ExifGps`, `ExifExposure`
+  - Added Audio fields: `AudioArtist`, `AudioAlbum`, `AudioTitle`, `AudioGenre`, `AudioTrack`, `AudioYear`
+  - Updated `evaluate()` to extract metadata and match against new fields
+- Frontend metadata display:
+  - Added `selectedFile` and `metadata` state to OrganizePanel
+  - Click on file row to fetch and display EXIF/audio metadata
+  - Visual display with camera info, GPS, audio tags
+- All items marked [x] in TODO.md (except EXIF date taken for organize-by-date)
+
+### Phase 6: Undo/Redo System — COMPLETED
+- Activity feed with toast notifications:
+  - Created `Toast.tsx` component with Framer Motion animations
+  - Toast types: success (green), error (red), info (neutral)
+  - Optional undo button on toasts
+  - Auto-dismiss after 5 seconds
+  - Added `showToast()` helper function
+- Corrupt config/rules recovery:
+  - `rule_engine.rs`: backup corrupt rules.json to .json.bak, return defaults
+  - `organizer.rs`: backup corrupt config.json to .json.bak, use defaults
+  - `journal.rs`: verify SQLite integrity, backup corrupt database to .db.bak
+- All items marked [x] in TODO.md
+
+### Files Modified
+- `src-tauri/src/core/duplicates.rs` — added AtomicUsize progress tracking
+- `src-tauri/src/core/rule_engine.rs` — added EXIF/audio condition fields, corrupt recovery
+- `src-tauri/src/core/organizer.rs` — corrupt config recovery
+- `src-tauri/src/core/journal.rs` — SQLite integrity check and corrupt recovery
+- `src/components/OrganizePanel/OrganizePanel.tsx` — metadata display, toast notifications
+- `src/components/Toast.tsx` — new toast notification component
+- `src/App.tsx` — added ToastContainer
+- `TODO.md` — marked Phase 4, 5, 6 items as complete
+
+### Commits
+- Pending: feat: complete Phase 4, 5, 6 per TODO.md
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `cargo fmt` — ✅ Clean
+- `cargo clippy -- -D warnings` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean

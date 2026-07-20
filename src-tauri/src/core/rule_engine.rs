@@ -27,6 +27,19 @@ pub enum ConditionField {
     Size,
     DateCreated,
     DateModified,
+    // EXIF fields
+    ExifCameraMake,
+    ExifCameraModel,
+    ExifDateTaken,
+    ExifGps,
+    ExifExposure,
+    // Audio fields
+    AudioArtist,
+    AudioAlbum,
+    AudioTitle,
+    AudioGenre,
+    AudioTrack,
+    AudioYear,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -57,7 +70,6 @@ fn rules_path() -> PathBuf {
 pub fn load_rules() -> Vec<Rule> {
     let path = rules_path();
     if !path.exists() {
-        // Create file with empty array if missing
         let _ = fs::create_dir_all(path.parent().unwrap_or(Path::new(".")));
         let _ = fs::write(&path, "[]");
         return Vec::new();
@@ -66,7 +78,16 @@ pub fn load_rules() -> Vec<Rule> {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
-    serde_json::from_str(&content).unwrap_or_default()
+    match serde_json::from_str(&content) {
+        Ok(rules) => rules,
+        Err(_) => {
+            // Corrupt file - backup and return defaults
+            let backup_path = path.with_extension("json.bak");
+            let _ = fs::copy(&path, &backup_path);
+            let _ = fs::write(&path, "[]");
+            Vec::new()
+        }
+    }
 }
 
 pub fn save_rules(rules: &[Rule]) -> Result<(), Box<dyn std::error::Error>> {
@@ -95,28 +116,85 @@ pub fn evaluate(file_path: &str, rule: &Rule) -> bool {
         .map(|e| e.to_string_lossy().to_string())
         .unwrap_or_default();
 
+    // Extract metadata for EXIF/audio fields
+    let file_metadata = crate::core::metadata::extract_metadata(file_path);
+
     rule.conditions.iter().all(|cond| {
         let field_value = match &cond.field {
             ConditionField::Extension => extension.clone(),
             ConditionField::Name => name.clone(),
             ConditionField::Size => metadata.len().to_string(),
-            ConditionField::DateCreated => {
-                // Try created, fall back to modified
-                metadata
-                    .created()
-                    .or_else(|_| metadata.modified())
-                    .map(|t| {
-                        let dt: chrono::DateTime<chrono::Local> = t.into();
-                        dt.to_rfc3339()
-                    })
-                    .unwrap_or_default()
-            }
+            ConditionField::DateCreated => metadata
+                .created()
+                .or_else(|_| metadata.modified())
+                .map(|t| {
+                    let dt: chrono::DateTime<chrono::Local> = t.into();
+                    dt.to_rfc3339()
+                })
+                .unwrap_or_default(),
             ConditionField::DateModified => metadata
                 .modified()
                 .map(|t| {
                     let dt: chrono::DateTime<chrono::Local> = t.into();
                     dt.to_rfc3339()
                 })
+                .unwrap_or_default(),
+            // EXIF fields
+            ConditionField::ExifCameraMake => file_metadata
+                .exif
+                .as_ref()
+                .and_then(|e| e.camera_make.clone())
+                .unwrap_or_default(),
+            ConditionField::ExifCameraModel => file_metadata
+                .exif
+                .as_ref()
+                .and_then(|e| e.camera_model.clone())
+                .unwrap_or_default(),
+            ConditionField::ExifDateTaken => file_metadata
+                .exif
+                .as_ref()
+                .and_then(|e| e.date_taken.clone())
+                .unwrap_or_default(),
+            ConditionField::ExifGps => file_metadata
+                .exif
+                .as_ref()
+                .and_then(|e| e.gps.clone())
+                .unwrap_or_default(),
+            ConditionField::ExifExposure => file_metadata
+                .exif
+                .as_ref()
+                .and_then(|e| e.exposure.clone())
+                .unwrap_or_default(),
+            // Audio fields
+            ConditionField::AudioArtist => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.artist.clone())
+                .unwrap_or_default(),
+            ConditionField::AudioAlbum => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.album.clone())
+                .unwrap_or_default(),
+            ConditionField::AudioTitle => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.title.clone())
+                .unwrap_or_default(),
+            ConditionField::AudioGenre => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.genre.clone())
+                .unwrap_or_default(),
+            ConditionField::AudioTrack => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.track.map(|t| t.to_string()))
+                .unwrap_or_default(),
+            ConditionField::AudioYear => file_metadata
+                .audio
+                .as_ref()
+                .and_then(|a| a.year.map(|y| y.to_string()))
                 .unwrap_or_default(),
         };
 
@@ -139,8 +217,6 @@ pub fn evaluate(file_path: &str, rule: &Rule) -> bool {
                     Ok(dt) => dt.with_timezone(&chrono::Local),
                     Err(_) => return false,
                 };
-                // For DateCreated: prefer created(), fall back to modified()
-                // For DateModified: always use modified()
                 let sys_time = if cond.field == ConditionField::DateCreated {
                     metadata.created().or_else(|_| metadata.modified())
                 } else {

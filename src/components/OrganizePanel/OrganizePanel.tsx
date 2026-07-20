@@ -5,9 +5,12 @@ import {
   organizeByExtension,
   organizeByDate,
   batchRename,
+  getMetadata,
   type FileInfo,
   type OrganizeResult,
+  type FileMetadata,
 } from "../../lib/tauri-bridge";
+import { showToast } from "../Toast";
 
 type Mode = "extension" | "date" | "rename";
 
@@ -48,6 +51,10 @@ export default function OrganizePanel() {
   // Results
   const [result, setResult] = useState<OrganizeResult | null>(null);
 
+  // Selected file metadata
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<FileMetadata | null>(null);
+
   // Listen for progress events
   useEffect(() => {
     const unlisten = listen<{ current: number; total: number; file: string; status: string }>(
@@ -64,6 +71,16 @@ export default function OrganizePanel() {
       unlisten.then((fn) => fn());
     };
   }, []);
+
+  async function handleFileClick(filePath: string) {
+    setSelectedFile(filePath);
+    try {
+      const meta = await getMetadata(filePath);
+      setMetadata(meta);
+    } catch {
+      setMetadata(null);
+    }
+  }
 
   async function pickDirectory() {
     setDirError("");
@@ -113,6 +130,14 @@ export default function OrganizePanel() {
           break;
       }
       setResult(res);
+      if (res.moved > 0) {
+        showToast(
+          dryRun
+            ? `Preview: ${res.moved} files would be processed`
+            : `Organized ${res.moved} files`,
+          "success",
+        );
+      }
     } catch (e) {
       setResult({
         total_files: 0,
@@ -121,6 +146,7 @@ export default function OrganizePanel() {
         errors: [String(e)],
         dry_run: dryRun,
       });
+      showToast(`Error: ${e}`, "error");
     } finally {
       setExecuting(false);
       setProgress(null);
@@ -322,7 +348,13 @@ export default function OrganizePanel() {
               </thead>
               <tbody>
                 {displayedFiles.map((f, i) => (
-                  <tr key={i} className="border-b border-white/[0.03] last:border-0">
+                  <tr
+                    key={i}
+                    onClick={() => handleFileClick(f.path)}
+                    className={`cursor-pointer border-b border-white/[0.03] last:border-0 transition-colors ${
+                      selectedFile === f.path ? "bg-afo-purple/10" : "hover:bg-white/[0.02]"
+                    }`}
+                  >
                     <td className="max-w-[240px] truncate px-3 py-1.5 text-white/70">{f.name}</td>
                     <td className="px-3 py-1.5 text-white/40">{f.extension}</td>
                     <td className="px-3 py-1.5 text-white/40">{formatBytes(f.size)}</td>
@@ -331,6 +363,111 @@ export default function OrganizePanel() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Metadata display */}
+      {selectedFile && metadata && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold">File Metadata</h3>
+            <button
+              onClick={() => {
+                setSelectedFile(null);
+                setMetadata(null);
+              }}
+              className="text-xs text-white/40 hover:text-white/60"
+            >
+              Close
+            </button>
+          </div>
+          <div className="text-xs text-white/50 mb-3 truncate">{selectedFile}</div>
+
+          {metadata.exif && (
+            <div className="mb-4">
+              <h4 className="mb-2 text-xs font-medium text-afo-sky/80">EXIF Data</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {metadata.exif.camera_make && (
+                  <div>
+                    <span className="text-white/40">Make: </span>
+                    <span className="text-white/70">{metadata.exif.camera_make}</span>
+                  </div>
+                )}
+                {metadata.exif.camera_model && (
+                  <div>
+                    <span className="text-white/40">Model: </span>
+                    <span className="text-white/70">{metadata.exif.camera_model}</span>
+                  </div>
+                )}
+                {metadata.exif.date_taken && (
+                  <div>
+                    <span className="text-white/40">Date Taken: </span>
+                    <span className="text-white/70">{metadata.exif.date_taken}</span>
+                  </div>
+                )}
+                {metadata.exif.gps && (
+                  <div>
+                    <span className="text-white/40">GPS: </span>
+                    <span className="text-white/70">{metadata.exif.gps}</span>
+                  </div>
+                )}
+                {metadata.exif.exposure && (
+                  <div>
+                    <span className="text-white/40">Exposure: </span>
+                    <span className="text-white/70">{metadata.exif.exposure}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {metadata.audio && (
+            <div>
+              <h4 className="mb-2 text-xs font-medium text-afo-emerald/80">Audio Tags</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {metadata.audio.artist && (
+                  <div>
+                    <span className="text-white/40">Artist: </span>
+                    <span className="text-white/70">{metadata.audio.artist}</span>
+                  </div>
+                )}
+                {metadata.audio.album && (
+                  <div>
+                    <span className="text-white/40">Album: </span>
+                    <span className="text-white/70">{metadata.audio.album}</span>
+                  </div>
+                )}
+                {metadata.audio.title && (
+                  <div>
+                    <span className="text-white/40">Title: </span>
+                    <span className="text-white/70">{metadata.audio.title}</span>
+                  </div>
+                )}
+                {metadata.audio.genre && (
+                  <div>
+                    <span className="text-white/40">Genre: </span>
+                    <span className="text-white/70">{metadata.audio.genre}</span>
+                  </div>
+                )}
+                {metadata.audio.track && (
+                  <div>
+                    <span className="text-white/40">Track: </span>
+                    <span className="text-white/70">{metadata.audio.track}</span>
+                  </div>
+                )}
+                {metadata.audio.year && (
+                  <div>
+                    <span className="text-white/40">Year: </span>
+                    <span className="text-white/70">{metadata.audio.year}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!metadata.exif && !metadata.audio && (
+            <p className="text-xs text-white/30">No metadata available for this file.</p>
+          )}
         </div>
       )}
     </div>

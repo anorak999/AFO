@@ -88,9 +88,16 @@ impl CategoryConfig {
                         #[serde(default)]
                         categories: Option<HashMap<String, Vec<String>>>,
                     }
-                    if let Ok(cfg) = serde_json::from_str::<ConfigFile>(&content) {
-                        if let Some(cats) = cfg.categories {
-                            return Self { categories: cats };
+                    match serde_json::from_str::<ConfigFile>(&content) {
+                        Ok(cfg) => {
+                            if let Some(cats) = cfg.categories {
+                                return Self { categories: cats };
+                            }
+                        }
+                        Err(_) => {
+                            // Corrupt config - backup and use defaults
+                            let backup_path = path.with_extension("json.bak");
+                            let _ = std::fs::copy(&path, &backup_path);
                         }
                     }
                 }

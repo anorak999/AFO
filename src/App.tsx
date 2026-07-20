@@ -7,6 +7,7 @@ import DuplicatesPanel from "./components/DuplicatesPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import CommandPalette from "./components/CommandPalette";
+import ToastContainer from "./components/Toast";
 
 const panels = {
   organize: OrganizePanel,
@@ -44,6 +45,7 @@ export default function App() {
         <ActivePanel />
       </main>
       <CommandPalette />
+      <ToastContainer />
     </div>
   );
 }

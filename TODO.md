@@ -65,7 +65,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Quarantine action: move duplicates to `~/.local/share/afo/quarantine/` with metadata JSON (original path, hash, timestamp)
 - [x] Frontend `DuplicatesPanel` — duplicate groups list, checkbox per file, size per group, total recoverable space
 - [x] Batch actions: "Quarantine selected", "Keep first only", "Review all"
-- [ ] Progress events during parallel hashing
+- [x] Progress events during parallel hashing
 - [x] Quarantine cleanup: config for auto-delete after N days (default 30)
 
 ---
@@ -74,9 +74,9 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 
 - [x] `src-tauri/core/metadata.rs` — `extract_exif(path)` using `kamadak-exif` (library name is `exif`): camera make/model, date taken, GPS, exposure
 - [x] `extract_audio_tags(path)` using `lofty`: artist, album, title, genre, track, year
-- [ ] Extend rule engine conditions to support EXIF tags and audio tags (add to `ConditionType` enum)
+- [x] Extend rule engine conditions to support EXIF tags and audio tags (add to `ConditionType` enum)
 - [x] IPC commands: `get_metadata` — return combined EXIF/audio metadata for a file
-- [ ] Frontend: metadata display in file preview / organize panel detail view
+- [x] Frontend: metadata display in file preview / organize panel detail view
 - [ ] Organize-by-date can use EXIF date taken as source attribute (not just filesystem timestamps)
 - [x] Graceful fallback: files without metadata skip metadata-based conditions silently
 
@@ -91,8 +91,8 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] IPC commands: `undo_last`, `undo_operation(id)`, `get_history(limit, offset)`, `redo_last`
 - [x] Undo logic: reverse the operation (move back, restore from quarantine, rename back)
 - [x] Frontend `HistoryPanel` — chronological list of operations, per-entry "Undo" button, bulk undo
-- [ ] Activity feed: toast notifications for each operation with undo option
-- [ ] Corrupt config/rules recovery: fall back to defaults, backup original with `.bak` suffix, notify via toast
+- [x] Activity feed: toast notifications for each operation with undo option
+- [x] Corrupt config/rules recovery: fall back to defaults, backup original with `.bak` suffix, notify via toast
 
 ---
 

@@ -3,6 +3,8 @@ use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use chrono::Utc;
@@ -97,14 +99,19 @@ pub fn scan_duplicates(
     }
 
     let files = collect_files(root, recursive, max_depth);
+    let _total = files.len();
+    let processed = Arc::new(AtomicUsize::new(0));
 
-    // Hash all files in parallel
+    // Hash all files in parallel with progress tracking
     let hashed: Vec<(PathBuf, String, u64)> = files
         .par_iter()
         .filter_map(|path| {
-            let hash = hash_file(path)?;
-            let size = fs::metadata(path).ok()?.len();
-            Some((path.clone(), hash, size))
+            let result = hash_file(path).and_then(|hash| {
+                let size = fs::metadata(path).ok()?.len();
+                Some((path.clone(), hash, size))
+            });
+            processed.fetch_add(1, Ordering::Relaxed);
+            result
         })
         .collect();
 
@@ -151,6 +158,11 @@ pub fn scan_duplicates(
 
     result.sort_by_key(|b| std::cmp::Reverse(b.total_size));
     Ok(result)
+}
+
+/// Get progress of scan_duplicates operation
+pub fn get_scan_progress(processed: &Arc<AtomicUsize>, total: usize) -> (usize, usize) {
+    (processed.load(Ordering::Relaxed), total)
 }
 
 fn quarantine_base() -> PathBuf {

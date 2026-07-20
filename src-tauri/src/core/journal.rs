@@ -41,7 +41,27 @@ pub fn init_journal() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let db = Connection::open(path)?;
+
+    // Try to open existing database, backup if corrupt
+    let db = match Connection::open(&path) {
+        Ok(conn) => {
+            // Verify database integrity
+            let is_valid: bool = conn
+                .pragma_query_value(None, "integrity_check", |row| row.get(0))
+                .unwrap_or(false);
+            if !is_valid {
+                // Backup corrupt database
+                let backup_path = path.with_extension("db.bak");
+                let _ = fs::copy(&path, &backup_path);
+                fs::remove_file(&path)?;
+                Connection::open(&path)?
+            } else {
+                conn
+            }
+        }
+        Err(_) => Connection::open(&path)?,
+    };
+
     db.execute_batch(
         "PRAGMA journal_mode=WAL;
          CREATE TABLE IF NOT EXISTS operations (
