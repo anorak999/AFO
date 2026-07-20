@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "./lib/store";
 import Sidebar from "./components/Sidebar";
 import OrganizePanel from "./components/OrganizePanel";
@@ -7,21 +8,32 @@ import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import CommandPalette from "./components/CommandPalette";
 
+const panels = {
+  organize: OrganizePanel,
+  rules: RuleBuilder,
+  duplicates: DuplicatesPanel,
+  history: HistoryPanel,
+  settings: SettingsPanel,
+} as const;
+
 function ActivePanel() {
   const activePanel = useAppStore((s) => s.activePanel);
+  const Panel = panels[activePanel];
 
-  switch (activePanel) {
-    case "organize":
-      return <OrganizePanel />;
-    case "rules":
-      return <RuleBuilder />;
-    case "duplicates":
-      return <DuplicatesPanel />;
-    case "history":
-      return <HistoryPanel />;
-    case "settings":
-      return <SettingsPanel />;
-  }
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={activePanel}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        className="h-full"
+      >
+        <Panel />
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 export default function App() {

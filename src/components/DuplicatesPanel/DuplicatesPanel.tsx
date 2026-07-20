@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { scanDuplicates, quarantineDuplicates, deleteDuplicates, type DuplicateGroup } from "../../lib/tauri-bridge";
+import {
+  scanDuplicates,
+  quarantineDuplicates,
+  deleteDuplicates,
+  type DuplicateGroup,
+} from "../../lib/tauri-bridge";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -54,7 +59,11 @@ export default function DuplicatesPanel() {
   function toggleExpand(idx: number) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
       return next;
     });
   }
@@ -63,7 +72,11 @@ export default function DuplicatesPanel() {
     setSelected((prev) => {
       const next = new Map(prev);
       const group = new Set(next.get(groupIdx) ?? []);
-      group.has(fileIdx) ? group.delete(fileIdx) : group.add(fileIdx);
+      if (group.has(fileIdx)) {
+        group.delete(fileIdx);
+      } else {
+        group.add(fileIdx);
+      }
       next.set(groupIdx, group);
       return next;
     });
@@ -74,7 +87,10 @@ export default function DuplicatesPanel() {
       const next = new Map(prev);
       const current = next.get(groupIdx);
       const allSelected = current && current.size === fileCount;
-      next.set(groupIdx, allSelected ? new Set() : new Set(Array.from({ length: fileCount }, (_, i) => i)));
+      next.set(
+        groupIdx,
+        allSelected ? new Set() : new Set(Array.from({ length: fileCount }, (_, i) => i)),
+      );
       return next;
     });
   }
@@ -122,7 +138,10 @@ export default function DuplicatesPanel() {
     return sum + nonKeeperSize;
   }, 0);
 
-  const totalNonKeeperFiles = groups.reduce((sum, g) => sum + g.files.filter((f) => !f.is_keeper).length, 0);
+  const totalNonKeeperFiles = groups.reduce(
+    (sum, g) => sum + g.files.filter((f) => !f.is_keeper).length,
+    0,
+  );
 
   const hasSelection = getSelectedIndices().length > 0;
 
@@ -131,7 +150,9 @@ export default function DuplicatesPanel() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Duplicate Detection</h1>
-        <p className="mt-1 text-sm text-white/40">Find and manage duplicate files across your directories.</p>
+        <p className="mt-1 text-sm text-white/40">
+          Find and manage duplicate files across your directories.
+        </p>
       </div>
 
       {/* Directory picker */}
@@ -152,7 +173,12 @@ export default function DuplicatesPanel() {
       <div className="flex items-center gap-6">
         <label className="flex cursor-pointer items-center gap-3">
           <div className="relative">
-            <input type="checkbox" checked={recursive} onChange={(e) => setRecursive(e.target.checked)} className="peer sr-only" />
+            <input
+              type="checkbox"
+              checked={recursive}
+              onChange={(e) => setRecursive(e.target.checked)}
+              className="peer sr-only"
+            />
             <div className="h-5 w-9 rounded-full bg-white/10 transition-colors peer-checked:bg-afo-purple/60" />
             <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
           </div>
@@ -185,7 +211,9 @@ export default function DuplicatesPanel() {
         </button>
       </div>
 
-      {actionError && <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{actionError}</p>}
+      {actionError && (
+        <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{actionError}</p>
+      )}
 
       {/* Results */}
       {groups.length > 0 && (
@@ -202,7 +230,9 @@ export default function DuplicatesPanel() {
                 <div className="text-xs text-white/40">Recoverable Files</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-afo-emerald">{formatBytes(totalRecoverable)}</div>
+                <div className="text-2xl font-bold text-afo-emerald">
+                  {formatBytes(totalRecoverable)}
+                </div>
                 <div className="text-xs text-white/40">Recoverable Space</div>
               </div>
             </div>
@@ -236,7 +266,11 @@ export default function DuplicatesPanel() {
                 <div key={gi} className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
                   {/* Group header */}
                   <div className="flex items-center gap-4 px-5 py-3.5">
-                    <button onClick={() => toggleExpand(gi)} className="shrink-0 text-xs text-white/40 transition-transform hover:text-white/60" style={{ transform: isExpanded ? "rotate(90deg)" : "" }}>
+                    <button
+                      onClick={() => toggleExpand(gi)}
+                      className="shrink-0 text-xs text-white/40 transition-transform hover:text-white/60"
+                      style={{ transform: isExpanded ? "rotate(90deg)" : "" }}
+                    >
                       ▶
                     </button>
                     <div className="min-w-0 flex-1">
@@ -244,7 +278,8 @@ export default function DuplicatesPanel() {
                         {group.hash}
                       </div>
                       <div className="mt-0.5 text-xs text-white/30">
-                        {group.files.length} file{group.files.length !== 1 ? "s" : ""} · {formatBytes(group.total_size)}
+                        {group.files.length} file{group.files.length !== 1 ? "s" : ""} ·{" "}
+                        {formatBytes(group.total_size)}
                       </div>
                     </div>
                     <button

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   scanDirectory,
   organizeByExtension,
@@ -35,8 +36,34 @@ export default function OrganizePanel() {
   const [executing, setExecuting] = useState(false);
   const [files, setFiles] = useState<FileInfo[]>([]);
 
+  // Progress
+  const [progress, setProgress] = useState<{ current: number; total: number; file: string } | null>(
+    null,
+  );
+  const progressRef = useRef(progress);
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
+
   // Results
   const [result, setResult] = useState<OrganizeResult | null>(null);
+
+  // Listen for progress events
+  useEffect(() => {
+    const unlisten = listen<{ current: number; total: number; file: string; status: string }>(
+      "afo://progress",
+      (event) => {
+        setProgress({
+          current: event.payload.current,
+          total: event.payload.total,
+          file: event.payload.file,
+        });
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   async function pickDirectory() {
     setDirError("");
@@ -71,6 +98,7 @@ export default function OrganizePanel() {
     if (!dirPath) return;
     setExecuting(true);
     setResult(null);
+    setProgress(null);
     try {
       let res: OrganizeResult;
       switch (mode) {
@@ -95,6 +123,7 @@ export default function OrganizePanel() {
       });
     } finally {
       setExecuting(false);
+      setProgress(null);
     }
   }
 
@@ -140,9 +169,7 @@ export default function OrganizePanel() {
               setResult(null);
             }}
             className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              mode === t.id
-                ? "bg-afo-purple/20 text-white"
-                : "text-white/40 hover:text-white/60"
+              mode === t.id ? "bg-afo-purple/20 text-white" : "text-white/40 hover:text-white/60"
             }`}
           >
             {t.label}
@@ -153,9 +180,7 @@ export default function OrganizePanel() {
       {/* Mode-specific options */}
       {mode === "date" && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <label className="mb-2 block text-xs font-medium text-white/50">
-            Date Format
-          </label>
+          <label className="mb-2 block text-xs font-medium text-white/50">Date Format</label>
           <select
             value={dateFormat}
             onChange={(e) => setDateFormat(e.target.value as typeof dateFormat)}
@@ -164,17 +189,13 @@ export default function OrganizePanel() {
             <option value="yearmonth">Year/Month (YYYY/MM)</option>
             <option value="fulldate">Full Date (YYYY-MM-DD)</option>
           </select>
-          <p className="mt-2 text-xs text-white/30">
-            Backend always organizes by YYYY/MM for now.
-          </p>
+          <p className="mt-2 text-xs text-white/30">Backend always organizes by YYYY/MM for now.</p>
         </div>
       )}
 
       {mode === "rename" && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <label className="mb-2 block text-xs font-medium text-white/50">
-            Rename Pattern
-          </label>
+          <label className="mb-2 block text-xs font-medium text-white/50">Rename Pattern</label>
           <input
             type="text"
             value={renamePattern}
@@ -221,6 +242,26 @@ export default function OrganizePanel() {
         </button>
       </div>
 
+      {/* Progress bar */}
+      {progress && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-white/50">
+              Processing: <span className="text-white/70">{progress.file}</span>
+            </span>
+            <span className="text-white/40">
+              {progress.current} / {progress.total}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-afo-purple transition-all duration-150"
+              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Result card */}
       {result && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
@@ -265,9 +306,7 @@ export default function OrganizePanel() {
       {files.length > 0 && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">
-              Scanned Files ({files.length})
-            </h3>
+            <h3 className="text-sm font-semibold">Scanned Files ({files.length})</h3>
             <span className="text-xs text-white/30">
               Showing {displayedFiles.length} of {files.length}
             </span>
@@ -276,30 +315,17 @@ export default function OrganizePanel() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                  <th className="px-3 py-2 text-xs font-medium text-white/40">
-                    Name
-                  </th>
-                  <th className="px-3 py-2 text-xs font-medium text-white/40">
-                    Ext
-                  </th>
-                  <th className="px-3 py-2 text-xs font-medium text-white/40">
-                    Size
-                  </th>
+                  <th className="px-3 py-2 text-xs font-medium text-white/40">Name</th>
+                  <th className="px-3 py-2 text-xs font-medium text-white/40">Ext</th>
+                  <th className="px-3 py-2 text-xs font-medium text-white/40">Size</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedFiles.map((f, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-white/[0.03] last:border-0"
-                  >
-                    <td className="max-w-[240px] truncate px-3 py-1.5 text-white/70">
-                      {f.name}
-                    </td>
+                  <tr key={i} className="border-b border-white/[0.03] last:border-0">
+                    <td className="max-w-[240px] truncate px-3 py-1.5 text-white/70">{f.name}</td>
                     <td className="px-3 py-1.5 text-white/40">{f.extension}</td>
-                    <td className="px-3 py-1.5 text-white/40">
-                      {formatBytes(f.size)}
-                    </td>
+                    <td className="px-3 py-1.5 text-white/40">{formatBytes(f.size)}</td>
                   </tr>
                 ))}
               </tbody>

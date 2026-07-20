@@ -34,13 +34,20 @@ export default function CommandPalette() {
 
   const setActivePanel = useAppStore((s) => s.setActivePanel);
 
+  const openPalette = useCallback(() => {
+    setQuery("");
+    setActiveIndex(0);
+    setVisibleCount(0);
+    setOpen(true);
+  }, []);
+
   // Register external opener
   useEffect(() => {
-    externalOpen = () => setOpen(true);
+    externalOpen = openPalette;
     return () => {
       externalOpen = null;
     };
-  }, []);
+  }, [openPalette]);
 
   // ── Global key listener ──────────────────────────────
 
@@ -48,12 +55,16 @@ export default function CommandPalette() {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        if (open) {
+          setOpen(false);
+        } else {
+          openPalette();
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open, openPalette]);
 
   // ── Commands ─────────────────────────────────────────
 
@@ -165,17 +176,10 @@ export default function CommandPalette() {
 
   useEffect(() => {
     if (open) {
-      setQuery("");
-      setActiveIndex(0);
-      setVisibleCount(0);
       // Focus after render
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
 
   // ── Staggered reveal ─────────────────────────────────
 
@@ -215,8 +219,7 @@ export default function CommandPalette() {
   if (!open) return null;
 
   const isMac =
-    typeof navigator !== "undefined" &&
-    navigator.platform?.toUpperCase().includes("MAC");
+    typeof navigator !== "undefined" && navigator.platform?.toUpperCase().includes("MAC");
   const modKey = isMac ? "⌘" : "Ctrl";
 
   let flatIndex = 0;
@@ -265,9 +268,7 @@ export default function CommandPalette() {
         {/* Results */}
         <div ref={listRef} className="max-h-[360px] overflow-y-auto p-2">
           {filtered.length === 0 && (
-            <div className="py-8 text-center text-sm text-white/30">
-              No commands found.
-            </div>
+            <div className="py-8 text-center text-sm text-white/30">No commands found.</div>
           )}
 
           {[...grouped.entries()].map(([category, commands]) => (
@@ -289,11 +290,7 @@ export default function CommandPalette() {
                       isActive
                         ? "bg-afo-purple/15 text-white"
                         : "text-white/60 hover:bg-white/[0.04]"
-                    } ${
-                      visible
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-1"
-                    }`}
+                    } ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
                     style={{ transitionDelay: visible ? `${idx * 25}ms` : "0ms" }}
                   >
                     <span className="flex-1 truncate">{cmd.label}</span>
@@ -324,7 +321,9 @@ export default function CommandPalette() {
             select
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5">{modKey}K</kbd>
+            <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5">
+              {modKey}K
+            </kbd>
             toggle
           </span>
         </div>

@@ -8,8 +8,22 @@ import {
   type RuleAction,
 } from "../../lib/tauri-bridge";
 
-const FIELDS: RuleCondition["field"][] = ["Extension", "Name", "Size", "DateCreated", "DateModified"];
-const OPERATORS: RuleCondition["operator"][] = ["Equals", "Contains", "StartsWith", "EndsWith", "GreaterThan", "LessThan", "Regex"];
+const FIELDS: RuleCondition["field"][] = [
+  "Extension",
+  "Name",
+  "Size",
+  "DateCreated",
+  "DateModified",
+];
+const OPERATORS: RuleCondition["operator"][] = [
+  "Equals",
+  "Contains",
+  "StartsWith",
+  "EndsWith",
+  "GreaterThan",
+  "LessThan",
+  "Regex",
+];
 const ACTION_TYPES = ["Move", "Copy", "Rename"] as const;
 
 function emptyCondition(): RuleCondition {
@@ -88,8 +102,21 @@ export default function RuleBuilder() {
     if (!formName.trim()) return;
     const updated =
       editing === "new"
-        ? [...rules, { id: makeId(), name: formName.trim(), enabled: true, conditions: formConditions, actions: formActions }]
-        : rules.map((r) => (r.id === editing ? { ...r, name: formName.trim(), conditions: formConditions, actions: formActions } : r));
+        ? [
+            ...rules,
+            {
+              id: makeId(),
+              name: formName.trim(),
+              enabled: true,
+              conditions: formConditions,
+              actions: formActions,
+            },
+          ]
+        : rules.map((r) =>
+            r.id === editing
+              ? { ...r, name: formName.trim(), conditions: formConditions, actions: formActions }
+              : r,
+          );
     try {
       await saveRules(updated);
       setRules(updated);
@@ -124,7 +151,9 @@ export default function RuleBuilder() {
     if (!dryRunPath) return;
     try {
       const res = await applyRules(dryRunPath, true);
-      setDryRunResult(`${res.moved} files would be affected (${res.skipped} skipped, ${res.errors.length} errors)`);
+      setDryRunResult(
+        `${res.moved} files would be affected (${res.skipped} skipped, ${res.errors.length} errors)`,
+      );
     } catch (e) {
       setDryRunResult(`Error: ${e}`);
     }
@@ -145,7 +174,9 @@ export default function RuleBuilder() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Rule Builder</h1>
-          <p className="mt-1 text-sm text-white/40">Define conditions and actions to organize files automatically.</p>
+          <p className="mt-1 text-sm text-white/40">
+            Define conditions and actions to organize files automatically.
+          </p>
         </div>
         <button
           onClick={startCreate}
@@ -155,7 +186,9 @@ export default function RuleBuilder() {
         </button>
       </div>
 
-      {error && <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{error}</p>}
+      {error && (
+        <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{error}</p>
+      )}
 
       {/* Rules list */}
       {rules.length === 0 && !editing ? (
@@ -166,7 +199,10 @@ export default function RuleBuilder() {
         <div className="space-y-2">
           {rules.map((rule) =>
             editing === rule.id ? (
-              <div key={rule.id} className="rounded-xl border border-afo-purple/30 bg-white/[0.03] p-5">
+              <div
+                key={rule.id}
+                className="rounded-xl border border-afo-purple/30 bg-white/[0.03] p-5"
+              >
                 <RuleForm
                   name={formName}
                   setName={setFormName}
@@ -194,9 +230,17 @@ export default function RuleBuilder() {
                   </div>
                 </div>
 
-                <button onClick={() => toggleRule(rule.id)} className="relative shrink-0" title={rule.enabled ? "Disable" : "Enable"}>
-                  <div className={`h-5 w-9 rounded-full transition-colors ${rule.enabled ? "bg-afo-purple/60" : "bg-white/10"}`} />
-                  <div className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${rule.enabled ? "translate-x-4" : ""}`} />
+                <button
+                  onClick={() => toggleRule(rule.id)}
+                  className="relative shrink-0"
+                  title={rule.enabled ? "Disable" : "Enable"}
+                >
+                  <div
+                    className={`h-5 w-9 rounded-full transition-colors ${rule.enabled ? "bg-afo-purple/60" : "bg-white/10"}`}
+                  />
+                  <div
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${rule.enabled ? "translate-x-4" : ""}`}
+                  />
                 </button>
 
                 <button
@@ -235,7 +279,9 @@ export default function RuleBuilder() {
       {/* Dry run */}
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
         <h3 className="mb-2 text-sm font-semibold">Test Rules</h3>
-        <p className="mb-3 text-xs text-white/30">Enter a directory path to dry-run all rules against.</p>
+        <p className="mb-3 text-xs text-white/30">
+          Enter a directory path to dry-run all rules against.
+        </p>
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -271,7 +317,16 @@ interface RuleFormProps {
   onCancel: () => void;
 }
 
-function RuleForm({ name, setName, conditions, setConditions, actions, setActions, onSave, onCancel }: RuleFormProps) {
+function RuleForm({
+  name,
+  setName,
+  conditions,
+  setConditions,
+  actions,
+  setActions,
+  onSave,
+  onCancel,
+}: RuleFormProps) {
   function updateCondition(idx: number, patch: Partial<RuleCondition>) {
     setConditions((prev) => prev.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
   }
@@ -307,7 +362,13 @@ function RuleForm({ name, setName, conditions, setConditions, actions, setAction
       {/* Name */}
       <div>
         <label className="mb-1 block text-xs font-medium text-white/50">Rule Name</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Organize images" className={`w-full ${inputCls}`} />
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Organize images"
+          className={`w-full ${inputCls}`}
+        />
       </div>
 
       {/* Conditions */}
@@ -316,24 +377,56 @@ function RuleForm({ name, setName, conditions, setConditions, actions, setAction
         <div className="space-y-2">
           {conditions.map((c, i) => (
             <div key={i} className="flex items-center gap-2">
-              <select value={c.field} onChange={(e) => updateCondition(i, { field: e.target.value as RuleCondition["field"] })} className={selectCls}>
+              <select
+                value={c.field}
+                onChange={(e) =>
+                  updateCondition(i, { field: e.target.value as RuleCondition["field"] })
+                }
+                className={selectCls}
+              >
                 {FIELDS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
                 ))}
               </select>
-              <select value={c.operator} onChange={(e) => updateCondition(i, { operator: e.target.value as RuleCondition["operator"] })} className={selectCls}>
+              <select
+                value={c.operator}
+                onChange={(e) =>
+                  updateCondition(i, { operator: e.target.value as RuleCondition["operator"] })
+                }
+                className={selectCls}
+              >
                 {OPERATORS.map((o) => (
-                  <option key={o} value={o}>{o}</option>
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
                 ))}
               </select>
-              <input type="text" value={c.value} onChange={(e) => updateCondition(i, { value: e.target.value })} placeholder="value" className={`min-w-0 flex-1 ${inputCls}`} />
+              <input
+                type="text"
+                value={c.value}
+                onChange={(e) => updateCondition(i, { value: e.target.value })}
+                placeholder="value"
+                className={`min-w-0 flex-1 ${inputCls}`}
+              />
               {conditions.length > 1 && (
-                <button onClick={() => removeCondition(i)} className="shrink-0 text-xs text-white/30 hover:text-afo-rose">✕</button>
+                <button
+                  onClick={() => removeCondition(i)}
+                  className="shrink-0 text-xs text-white/30 hover:text-afo-rose"
+                >
+                  ✕
+                </button>
               )}
             </div>
           ))}
         </div>
-        <button onClick={() => setConditions((prev) => [...prev, emptyCondition()])} className="mt-2 text-xs text-afo-purple/80 hover:text-afo-purple">+ Add Condition</button>
+        <button
+          onClick={() => setConditions((prev) => [...prev, emptyCondition()])}
+          className="mt-2 text-xs text-afo-purple/80 hover:text-afo-purple"
+        >
+          + Add Condition
+        </button>
       </div>
 
       {/* Actions */}
@@ -344,9 +437,15 @@ function RuleForm({ name, setName, conditions, setConditions, actions, setAction
             const type = getActionType(a);
             return (
               <div key={i} className="flex items-center gap-2">
-                <select value={type} onChange={(e) => setActionType(i, e.target.value as "Move" | "Copy" | "Rename")} className={selectCls}>
+                <select
+                  value={type}
+                  onChange={(e) => setActionType(i, e.target.value as "Move" | "Copy" | "Rename")}
+                  className={selectCls}
+                >
                   {ACTION_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
                 <input
@@ -357,19 +456,39 @@ function RuleForm({ name, setName, conditions, setConditions, actions, setAction
                   className={`min-w-0 flex-1 ${inputCls}`}
                 />
                 {actions.length > 1 && (
-                  <button onClick={() => removeAction(i)} className="shrink-0 text-xs text-white/30 hover:text-afo-rose">✕</button>
+                  <button
+                    onClick={() => removeAction(i)}
+                    className="shrink-0 text-xs text-white/30 hover:text-afo-rose"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
             );
           })}
         </div>
-        <button onClick={() => setActions((prev) => [...prev, emptyAction()])} className="mt-2 text-xs text-afo-purple/80 hover:text-afo-purple">+ Add Action</button>
+        <button
+          onClick={() => setActions((prev) => [...prev, emptyAction()])}
+          className="mt-2 text-xs text-afo-purple/80 hover:text-afo-purple"
+        >
+          + Add Action
+        </button>
       </div>
 
       {/* Buttons */}
       <div className="flex gap-3 pt-1">
-        <button onClick={onSave} className="rounded-xl bg-afo-purple px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-afo-purple/80">Save Rule</button>
-        <button onClick={onCancel} className="rounded-xl border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white">Cancel</button>
+        <button
+          onClick={onSave}
+          className="rounded-xl bg-afo-purple px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-afo-purple/80"
+        >
+          Save Rule
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-xl border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );

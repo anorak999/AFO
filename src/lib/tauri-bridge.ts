@@ -20,17 +20,11 @@ export async function scanDirectory(path: string): Promise<FileInfo[]> {
   return invoke<FileInfo[]>("scan_directory", { path });
 }
 
-export async function organizeByExtension(
-  path: string,
-  dryRun: boolean,
-): Promise<OrganizeResult> {
+export async function organizeByExtension(path: string, dryRun: boolean): Promise<OrganizeResult> {
   return invoke<OrganizeResult>("organize_by_extension", { path, dryRun });
 }
 
-export async function organizeByDate(
-  path: string,
-  dryRun: boolean,
-): Promise<OrganizeResult> {
+export async function organizeByDate(path: string, dryRun: boolean): Promise<OrganizeResult> {
   return invoke<OrganizeResult>("organize_by_date", { path, dryRun });
 }
 
@@ -45,7 +39,8 @@ export async function batchRename(
 // Rule Engine
 export interface RuleCondition {
   field: "Extension" | "Name" | "Size" | "DateCreated" | "DateModified";
-  operator: "Equals" | "Contains" | "StartsWith" | "EndsWith" | "GreaterThan" | "LessThan" | "Regex";
+  operator:
+    "Equals" | "Contains" | "StartsWith" | "EndsWith" | "GreaterThan" | "LessThan" | "Regex";
   value: string;
 }
 
@@ -88,11 +83,18 @@ export interface DuplicateGroup {
   total_size: number;
 }
 
-export async function scanDuplicates(path: string, recursive: boolean, maxDepth?: number): Promise<DuplicateGroup[]> {
+export async function scanDuplicates(
+  path: string,
+  recursive: boolean,
+  maxDepth?: number,
+): Promise<DuplicateGroup[]> {
   return invoke<DuplicateGroup[]>("scan_duplicates_cmd", { path, recursive, maxDepth });
 }
 
-export async function quarantineDuplicates(groups: DuplicateGroup[], indices: number[]): Promise<void> {
+export async function quarantineDuplicates(
+  groups: DuplicateGroup[],
+  indices: number[],
+): Promise<void> {
   return invoke("quarantine_duplicates_cmd", { groups, indices });
 }
 

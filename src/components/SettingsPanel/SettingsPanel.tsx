@@ -16,9 +16,7 @@ export default function SettingsPanel() {
     <div className="flex flex-col gap-6 p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-white/40">
-          Application settings and configuration.
-        </p>
+        <p className="mt-1 text-sm text-white/40">Application settings and configuration.</p>
       </div>
 
       <div className="flex gap-6">
@@ -56,8 +54,9 @@ function GeneralSection() {
     <div className="space-y-6">
       <SectionCard title="Category Mapping">
         <p className="text-xs text-white/40 mb-3">
-          File extensions are mapped to category folders during organize-by-extension.
-          Default mapping is used unless overridden in <code className="text-afo-purple/80">~/.config/afo/config.json</code>.
+          File extensions are mapped to category folders during organize-by-extension. Default
+          mapping is used unless overridden in{" "}
+          <code className="text-afo-purple/80">~/.config/afo/config.json</code>.
         </p>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
@@ -68,7 +67,10 @@ function GeneralSection() {
             ["Archives", "zip, tar, gz, rar, 7z"],
             ["Code", "rs, py, js, ts, go, c, cpp, h"],
           ].map(([cat, exts]) => (
-            <div key={cat} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <div
+              key={cat}
+              className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+            >
               <span className="font-medium text-white/70">{cat}</span>
               <span className="ml-2 text-white/30">{exts}</span>
             </div>
@@ -92,8 +94,8 @@ function WatchingSection() {
     <div className="space-y-6">
       <SectionCard title="Watched Directories">
         <p className="text-xs text-white/40 mb-3">
-          Configure directories for real-time file watching. Files added to watched
-          directories will be automatically organized based on your rules.
+          Configure directories for real-time file watching. Files added to watched directories will
+          be automatically organized based on your rules.
         </p>
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
           <p className="text-sm text-white/30">Folder watching coming in Phase 7.</p>
@@ -128,8 +130,8 @@ function AboutSection() {
           </p>
           <p>Version 2.0.0 (Tauri Edition)</p>
           <p className="text-xs text-white/30 mt-4">
-            Cross-platform desktop file organization. Rule-based sorting,
-            duplicate detection, batch rename, and metadata-aware organization.
+            Cross-platform desktop file organization. Rule-based sorting, duplicate detection, batch
+            rename, and metadata-aware organization.
           </p>
         </div>
       </SectionCard>

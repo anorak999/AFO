@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { getHistory, undoLast, undoOperation, redoLast, type JournalEntry } from "../../lib/tauri-bridge";
+import {
+  getHistory,
+  undoLast,
+  undoOperation,
+  redoLast,
+  type JournalEntry,
+} from "../../lib/tauri-bridge";
 
 const PAGE_SIZE = 20;
 
@@ -33,8 +39,14 @@ export default function HistoryPanel() {
   }, []);
 
   useEffect(() => {
-    refresh(0).finally(() => setLoading(false));
+    refresh(0);
   }, [refresh]);
+
+  useEffect(() => {
+    if (entries.length > 0 || error) {
+      setLoading(false);
+    }
+  }, [entries, error]);
 
   async function handleLoadMore() {
     const next = offset + PAGE_SIZE;
@@ -96,7 +108,9 @@ export default function HistoryPanel() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">History</h1>
-          <p className="mt-1 text-sm text-white/40">Browse past operations and undo or redo them.</p>
+          <p className="mt-1 text-sm text-white/40">
+            Browse past operations and undo or redo them.
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -116,12 +130,16 @@ export default function HistoryPanel() {
         </div>
       </div>
 
-      {error && <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{error}</p>}
+      {error && (
+        <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{error}</p>
+      )}
 
       {/* Empty state */}
       {entries.length === 0 && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-          <p className="text-sm text-white/40">No history yet. Perform an operation to see it here.</p>
+          <p className="text-sm text-white/40">
+            No history yet. Perform an operation to see it here.
+          </p>
         </div>
       )}
 
@@ -135,7 +153,9 @@ export default function HistoryPanel() {
             }`}
           >
             {/* Type badge */}
-            <span className={`shrink-0 rounded-md px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${opBadgeClass(entry.operation_type)}`}>
+            <span
+              className={`shrink-0 rounded-md px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${opBadgeClass(entry.operation_type)}`}
+            >
               {entry.operation_type}
             </span>
 
@@ -145,7 +165,10 @@ export default function HistoryPanel() {
                 {entry.source_path}
               </div>
               <div className="text-xs text-white/30">
-                → <span className="truncate text-white/50" title={entry.dest_path}>{entry.dest_path || "—"}</span>
+                →{" "}
+                <span className="truncate text-white/50" title={entry.dest_path}>
+                  {entry.dest_path || "—"}
+                </span>
               </div>
             </div>
 

@@ -5,6 +5,15 @@ use crate::core::organizer;
 use crate::core::rule_engine;
 use crate::core::scheduler;
 use crate::core::watcher;
+use tauri::Emitter;
+
+#[derive(Clone, serde::Serialize)]
+pub struct ProgressEvent {
+    pub current: usize,
+    pub total: usize,
+    pub file: String,
+    pub status: String,
+}
 
 #[tauri::command]
 pub async fn scan_directory(path: String) -> Result<Vec<organizer::FileInfo>, String> {
@@ -13,33 +22,157 @@ pub async fn scan_directory(path: String) -> Result<Vec<organizer::FileInfo>, St
 
 #[tauri::command]
 pub async fn organize_by_extension(
+    app: tauri::AppHandle,
     path: String,
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
-    organizer::organize_by_extension(&path, dry_run)
-        .await
-        .map_err(|e| e.to_string())
+    let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
+    let config = organizer::CategoryConfig::load();
+    let mut result = organizer::OrganizeResult {
+        total_files: files.len(),
+        moved: 0,
+        skipped: 0,
+        errors: Vec::new(),
+        dry_run,
+    };
+
+    for (i, file) in files.iter().enumerate() {
+        if file.is_dir {
+            result.skipped += 1;
+            continue;
+        }
+
+        let category = config.categorize(&file.extension);
+        let target_dir = std::path::Path::new(&path).join(category);
+
+        if dry_run {
+            result.moved += 1;
+        } else {
+            if !target_dir.exists() {
+                std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
+            }
+            let target_file = organizer::unique_path(&target_dir.join(&file.name));
+            match std::fs::rename(&file.path, &target_file) {
+                Ok(()) => result.moved += 1,
+                Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+            }
+        }
+
+        let _ = app.emit("afo://progress", ProgressEvent {
+            current: i + 1,
+            total: files.len(),
+            file: file.name.clone(),
+            status: if dry_run { "preview".to_string() } else { "moved".to_string() },
+        });
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
 pub async fn organize_by_date(
+    app: tauri::AppHandle,
     path: String,
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
-    organizer::organize_by_date(&path, dry_run)
-        .await
-        .map_err(|e| e.to_string())
+    let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
+    let mut result = organizer::OrganizeResult {
+        total_files: files.len(),
+        moved: 0,
+        skipped: 0,
+        errors: Vec::new(),
+        dry_run,
+    };
+
+    for (i, file) in files.iter().enumerate() {
+        if file.is_dir {
+            result.skipped += 1;
+            continue;
+        }
+
+        let metadata = std::fs::metadata(&file.path).map_err(|e| e.to_string())?;
+        let modified = metadata.modified().map_err(|e| e.to_string())?;
+        let datetime: chrono::DateTime<chrono::Local> = modified.into();
+        let date_folder = datetime.format("%Y/%m").to_string();
+        let target_dir = std::path::Path::new(&path).join(&date_folder);
+
+        if dry_run {
+            result.moved += 1;
+        } else {
+            if !target_dir.exists() {
+                std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
+            }
+            let target_file = organizer::unique_path(&target_dir.join(&file.name));
+            match std::fs::rename(&file.path, &target_file) {
+                Ok(()) => result.moved += 1,
+                Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+            }
+        }
+
+        let _ = app.emit("afo://progress", ProgressEvent {
+            current: i + 1,
+            total: files.len(),
+            file: file.name.clone(),
+            status: if dry_run { "preview".to_string() } else { "moved".to_string() },
+        });
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
 pub async fn batch_rename(
+    app: tauri::AppHandle,
     path: String,
     pattern: String,
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
-    organizer::batch_rename(&path, &pattern, dry_run)
-        .await
-        .map_err(|e| e.to_string())
+    let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
+    let mut result = organizer::OrganizeResult {
+        total_files: files.len(),
+        moved: 0,
+        skipped: 0,
+        errors: Vec::new(),
+        dry_run,
+    };
+
+    let mut counter = 1u32;
+
+    for (i, file) in files.iter().enumerate() {
+        if file.is_dir {
+            result.skipped += 1;
+            continue;
+        }
+
+        let name_no_ext = file.name.trim_end_matches(&format!(".{}", file.extension));
+        let new_name = pattern
+            .replace("{name}", name_no_ext)
+            .replace("{ext}", &file.extension)
+            .replace("{counter}", &counter.to_string());
+
+        let new_path = std::path::Path::new(&path).join(&new_name);
+
+        if dry_run {
+            result.moved += 1;
+        } else {
+            let target = organizer::unique_path(&new_path);
+            match std::fs::rename(&file.path, &target) {
+                Ok(()) => result.moved += 1,
+                Err(e) => result.errors.push(format!("Failed to rename {}: {}", file.name, e)),
+            }
+        }
+
+        counter += 1;
+
+        let _ = app.emit("afo://progress", ProgressEvent {
+            current: i + 1,
+            total: files.len(),
+            file: file.name.clone(),
+            status: if dry_run { "preview".to_string() } else { "renamed".to_string() },
+        });
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]

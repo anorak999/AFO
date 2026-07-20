@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useAppStore, type Panel } from "../../lib/store";
 
 const NAV_ITEMS: { id: Panel; label: string }[] = [
@@ -23,20 +24,27 @@ export default function Sidebar() {
           <div className="text-[10px] text-white/30">v2.0 Tauri</div>
         </div>
       </div>
-      <nav className="space-y-1">
+      <nav className="relative space-y-1">
         {NAV_ITEMS.map((item) => {
           const active = activePanel === item.id;
           return (
             <button
               key={item.id}
               onClick={() => setActivePanel(item.id)}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+              className={`relative w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                 active
-                  ? "bg-white/10 font-medium text-white"
+                  ? "font-medium text-white"
                   : "text-white/50 hover:bg-white/[0.04] hover:text-white"
               }`}
             >
-              {item.label}
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-lg bg-white/10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+                />
+              )}
+              <span className="relative z-10">{item.label}</span>
             </button>
           );
         })}
