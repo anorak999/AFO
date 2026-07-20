@@ -125,3 +125,89 @@ export async function undoOperation(id: number): Promise<JournalEntry | null> {
 export async function redoLast(): Promise<JournalEntry | null> {
   return invoke<JournalEntry | null>("redo_last");
 }
+
+// Metadata
+export interface ExifData {
+  camera_make: string | null;
+  camera_model: string | null;
+  date_taken: string | null;
+  gps: string | null;
+  exposure: string | null;
+}
+
+export interface AudioData {
+  artist: string | null;
+  album: string | null;
+  title: string | null;
+  genre: string | null;
+  track: number | null;
+  year: number | null;
+}
+
+export interface FileMetadata {
+  exif: ExifData | null;
+  audio: AudioData | null;
+}
+
+export async function getMetadata(path: string): Promise<FileMetadata> {
+  return invoke<FileMetadata>("get_metadata", { path });
+}
+
+// Watcher
+export interface WatchedDir {
+  path: string;
+  enabled: boolean;
+}
+
+export async function watchDirectory(dir: string): Promise<void> {
+  return invoke("watch_directory", { dir });
+}
+
+export async function unwatchDirectory(dir: string): Promise<void> {
+  return invoke("unwatch_directory", { dir });
+}
+
+export async function listWatchedDirectories(): Promise<WatchedDir[]> {
+  return invoke<WatchedDir[]>("list_watched_directories");
+}
+
+// Scheduler
+export interface Schedule {
+  id: string;
+  name: string;
+  cron: string;
+  action: {
+    OrganizeByExtension?: { path: string };
+    OrganizeByDate?: { path: string };
+    ApplyRules?: { path: string };
+    ScanDuplicates?: { path: string };
+  };
+  enabled: boolean;
+  last_run: string | null;
+  next_run: string | null;
+}
+
+export async function createSchedule(
+  name: string,
+  cron: string,
+  actionType: string,
+  path: string,
+): Promise<Schedule> {
+  return invoke<Schedule>("create_schedule_cmd", { name, cron, actionType, path });
+}
+
+export async function listSchedules(): Promise<Schedule[]> {
+  return invoke<Schedule[]>("list_schedules_cmd");
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  return invoke("delete_schedule_cmd", { id });
+}
+
+export async function toggleSchedule(id: string, enabled: boolean): Promise<void> {
+  return invoke("toggle_schedule_cmd", { id, enabled });
+}
+
+export async function runScheduleNow(id: string): Promise<void> {
+  return invoke("run_schedule_now", { id });
+}

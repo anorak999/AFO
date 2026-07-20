@@ -20,6 +20,15 @@ pub fn run() {
             commands::undo_last,
             commands::undo_operation,
             commands::redo_last,
+            commands::get_metadata,
+            commands::watch_directory,
+            commands::unwatch_directory,
+            commands::list_watched_directories,
+            commands::create_schedule_cmd,
+            commands::list_schedules_cmd,
+            commands::delete_schedule_cmd,
+            commands::toggle_schedule_cmd,
+            commands::run_schedule_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,7 +1,10 @@
 use crate::core::duplicates;
 use crate::core::journal;
+use crate::core::metadata;
 use crate::core::organizer;
 use crate::core::rule_engine;
+use crate::core::scheduler;
+use crate::core::watcher;
 
 #[tauri::command]
 pub async fn scan_directory(path: String) -> Result<Vec<organizer::FileInfo>, String> {
@@ -104,4 +107,63 @@ pub async fn undo_operation(id: i64) -> Result<Option<journal::JournalEntry>, St
 #[tauri::command]
 pub async fn redo_last() -> Result<Option<journal::JournalEntry>, String> {
     journal::redo_last()
+}
+
+#[tauri::command]
+pub async fn get_metadata(path: String) -> Result<metadata::Metadata, String> {
+    Ok(metadata::extract_metadata(&path))
+}
+
+#[tauri::command]
+pub async fn watch_directory(dir: String) -> Result<(), String> {
+    watcher::start_watching(&dir).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn unwatch_directory(dir: String) -> Result<(), String> {
+    watcher::stop_watching(&dir).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_watched_directories() -> Result<Vec<watcher::WatchedDir>, String> {
+    watcher::list_watched()
+}
+
+#[tauri::command]
+pub async fn create_schedule_cmd(
+    name: String,
+    cron: String,
+    action_type: String,
+    path: String,
+) -> Result<scheduler::Schedule, String> {
+    let action = match action_type.as_str() {
+        "organize_extension" => scheduler::ScheduleAction::OrganizeByExtension { path },
+        "organize_date" => scheduler::ScheduleAction::OrganizeByDate { path },
+        "apply_rules" => scheduler::ScheduleAction::ApplyRules { path },
+        "scan_duplicates" => scheduler::ScheduleAction::ScanDuplicates { path },
+        _ => return Err(format!("Unknown action type: {}", action_type)),
+    };
+    scheduler::create_schedule(&name, &cron, action)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_schedules_cmd() -> Result<Vec<scheduler::Schedule>, String> {
+    scheduler::list_schedules()
+}
+
+#[tauri::command]
+pub async fn delete_schedule_cmd(id: String) -> Result<(), String> {
+    scheduler::delete_schedule(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn toggle_schedule_cmd(id: String, enabled: bool) -> Result<(), String> {
+    scheduler::toggle_schedule(&id, enabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn run_schedule_now(id: String) -> Result<(), String> {
+    scheduler::run_now(&id).await.map_err(|e| e.to_string())
 }

@@ -138,6 +138,40 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - Made `unique_path` pub(crate) for cross-module use
 - Commit: `feat: implement rule engine with condition/action evaluation, IPC commands`
 
+### Phase 4: Duplicate Detection (2025-07-20)
+- Full implementation in `src-tauri/src/core/duplicates.rs` (229 lines)
+- `DuplicateGroup` / `DuplicateFile` structs with serde serialization
+- `scan_duplicates()` — parallel blake3 hashing via rayon, depth-capped recursive walk
+- `quarantine_duplicates()` — moves to `~/.local/share/afo/quarantine/{hash_prefix}/` with JSON sidecars
+- `delete_duplicates()` — permanent removal
+- Added 3 IPC commands: `scan_duplicates_cmd`, `quarantine_duplicates_cmd`, `delete_duplicates_cmd`
+- Commit: `feat: implement duplicate detection with blake3 + rayon parallelism`
+
+### Phase 6: Undo/Redo Journal (2025-07-20)
+- Full implementation in `src-tauri/src/core/journal.rs` (204 lines)
+- SQLite database at `~/.local/share/afo/journal.db` with WAL mode
+- `operations` table: id, operation_type, source_path, dest_path, timestamp, reverted
+- `init_journal()`, `record_operation()`, `get_history()`, `undo_last()`, `undo_operation()`, `redo_last()`
+- Module-level `OnceLock<Mutex<Connection>>` for state management
+- Added 4 IPC commands: `get_history`, `undo_last`, `undo_operation`, `redo_last`
+- Commit: `feat: implement undo/redo journal system with SQLite persistence`
+
+### Phase 2 Frontend Panels (2025-07-20)
+- Updated `src/lib/tauri-bridge.ts` with typed IPC wrappers for rules, duplicates, journal
+- `RuleBuilder.tsx` — Rule management with create/edit/delete, condition/action builder, enable/disable toggle
+- `DuplicatesPanel.tsx` — Directory scan, expandable duplicate groups, quarantine/delete actions
+- `HistoryPanel.tsx` — Chronological operation list, undo/redo buttons, load more pagination
+- Frontend builds clean
+- Commit: `feat: build RuleBuilder, DuplicatesPanel, and HistoryPanel components`
+
+### Phase 9: Command Palette (2025-07-20)
+- Full implementation in `CommandPalette.tsx` — Cmd/Ctrl+K overlay
+- 8 built-in commands: 5 navigation, scan, undo, redo
+- Fuzzy search, arrow key navigation, staggered animation
+- Portal render, backdrop click/Escape to close
+- Wired into App.tsx
+- Commit: `feat: implement Command Palette with Cmd/Ctrl+K`
+
 ## 2025-07-21 — App Shell & Full OrganizePanel
 
 ### What changed
@@ -224,3 +258,83 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 ### Notes
 - `cargo check` blocked by missing GTK dev headers (pre-existing) — `rustfmt --edition 2021 --check` confirms no syntax issues
 - No new dependencies added — uses existing rusqlite, serde, dirs, std (OnceLock, Mutex, fs)
+
+## 2025-07-21 — Core Gap Implementation (5 tasks)
+
+### Build Fixes
+- Fixed `tauri.conf.json` — moved `permissions` from `app.security` to separate `capabilities/default.json` file (Tauri v2 pattern)
+- Created valid RGBA PNG icon at `src-tauri/icons/icon.png` (64x64, purple)
+- Fixed `kamadak-exif` import — crate lib name is `exif` (not `kamadak_exif`), updated to v0.6 for API compatibility
+- Updated `lofty` usage — `read_from_path(path)` (no second arg), `TaggedFileExt` + `Accessor` traits at crate root
+
+### Task 1: Metadata Extraction (metadata.rs)
+- Replaced 26-line stub with full implementation
+- EXIF extraction via `exif` crate (Reader, Tag, In): camera_make, camera_model, date_taken, gps, exposure
+- Audio tag extraction via `lofty` crate: artist, album, title, genre, track, year
+- Added `get_metadata` IPC command + frontend `getMetadata()` bridge
+- `Metadata` struct serializable for frontend consumption
+
+### Task 2: Folder Watching (watcher.rs)
+- Replaced 12-line stub with full implementation
+- `notify` crate `RecommendedWatcher` with platform-appropriate backend
+- Event forwarding via `std::sync::mpsc` → `tokio::sync::mpsc` bridge thread
+- `start_watching(dir)` — registers directory with RecursiveMode::Recursive
+- `stop_watching(dir)` — unregisters directory
+- `list_watched()` — returns all watched dirs with enabled status
+- Added 3 IPC commands: `watch_directory`, `unwatch_directory`, `list_watched_directories`
+- Frontend `watchDirectory()`, `unwatchDirectory()`, `listWatchedDirectories()` bridge functions
+
+### Task 3: Scheduled Automation (scheduler.rs)
+- Replaced 10-line stub with full implementation
+- `Schedule` struct with id, name, cron, action, enabled, last_run
+- `ScheduleAction` enum: OrganizeByExtension, OrganizeByDate, ApplyRules, ScanDuplicates
+- JSON persistence at `~/.config/afo/schedules.json`
+- `create_schedule()` — creates schedule + saves to JSON
+- `list_schedules()`, `delete_schedule()`, `toggle_schedule()` — CRUD operations
+- `run_now()` — executes action immediately, updates last_run timestamp
+- Fixed Send issue: MutexGuard dropped before await points
+- Added 5 IPC commands: create, list, delete, toggle, run_now
+- Frontend bridge functions for all scheduler operations
+
+### Task 4: Undo Actually Reverses (journal.rs)
+- Added `reverse_operation()` — moves file back from dest to source
+- Added `forward_operation()` — re-executes the original operation (redo)
+- `undo_last()`, `undo_operation()` — now actually reverse file moves/copies/renames
+- `redo_last()` — now actually re-applies the operation
+- Handles edge cases: missing files, missing parents, unknown operation types
+
+### Task 5: Recursive Scanning (rule_engine.rs)
+- Added `apply_rules_recursive()` — recursive directory traversal with depth limit
+- `apply_rules()` now calls `apply_rules_recursive()` with max_depth=1 (non-recursive by default)
+- Subdirectory results merged into parent result (total_files, moved, skipped, errors)
+- Depth check: subdirectories scanned only if current_depth < max_depth
+
+### Settings Panel Upgrade
+- Replaced 8-line placeholder with full settings UI
+- 4 sections: General, Folder Watching, Schedules, About
+- General: category mapping display, default options
+- Watching: placeholder for Phase 7 UI
+- Scheduling: placeholder for Phase 8 UI
+- About: version info, data locations
+
+### Build Verification
+- `cargo check` — ✅ Clean (0 errors, 0 warnings)
+- `npx tsc --noEmit` — ✅ Clean
+- All 14 modified files + 3 new files (capabilities, icons, gen)
+
+### Files Modified
+- `src-tauri/Cargo.toml` — kamadak-exif v0.5 → v0.6
+- `src-tauri/Cargo.lock` — updated lockfile
+- `src-tauri/tauri.conf.json` — removed permissions (moved to capabilities)
+- `src-tauri/capabilities/default.json` — new Tauri v2 permissions file
+- `src-tauri/icons/icon.png` — new RGBA icon
+- `src-tauri/src/lib.rs` — registered 8 new commands (metadata, watcher, scheduler)
+- `src-tauri/src/commands.rs` — added 8 IPC commands
+- `src-tauri/src/core/metadata.rs` — full EXIF + audio extraction
+- `src-tauri/src/core/watcher.rs` — full notify-based watcher
+- `src-tauri/src/core/scheduler.rs` — full cron scheduler
+- `src-tauri/src/core/journal.rs` — added actual undo/redo file operations
+- `src-tauri/src/core/rule_engine.rs` — added recursive scanning
+- `src/lib/tauri-bridge.ts` — added metadata, watcher, scheduler types and functions
+- `src/components/SettingsPanel/SettingsPanel.tsx` — full settings UI
+- `TODO.md` — updated 5 items from [ ] to [x]

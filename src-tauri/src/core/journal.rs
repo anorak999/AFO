@@ -1,6 +1,7 @@
 // Undo/redo journal — SQLite via rusqlite
 
 use std::fs;
+use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -103,8 +104,84 @@ pub fn get_history(limit: i64, offset: i64) -> Result<Vec<JournalEntry>, String>
     })
 }
 
+/// Reverse a file operation based on its type
+fn reverse_operation(entry: &JournalEntry) -> Result<(), Box<dyn std::error::Error>> {
+    let src = Path::new(&entry.source_path);
+    let dest = Path::new(&entry.dest_path);
+
+    match entry.operation_type.as_str() {
+        "move" => {
+            // Move was: source -> dest
+            // Undo: move dest -> source
+            if dest.exists() {
+                if let Some(parent) = src.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::rename(dest, src)?;
+            }
+        }
+        "copy" => {
+            // Copy was: source -> dest (source still exists)
+            // Undo: delete dest
+            if dest.exists() {
+                fs::remove_file(dest)?;
+            }
+        }
+        "rename" => {
+            // Rename was: source -> dest
+            // Undo: rename dest -> source
+            if dest.exists() {
+                fs::rename(dest, src)?;
+            }
+        }
+        _ => {
+            return Err(format!("Unknown operation type: {}", entry.operation_type).into());
+        }
+    }
+
+    Ok(())
+}
+
+/// Forward a file operation (redo)
+fn forward_operation(entry: &JournalEntry) -> Result<(), Box<dyn std::error::Error>> {
+    let src = Path::new(&entry.source_path);
+    let dest = Path::new(&entry.dest_path);
+
+    match entry.operation_type.as_str() {
+        "move" => {
+            // Redo: move source -> dest
+            if src.exists() {
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::rename(src, dest)?;
+            }
+        }
+        "copy" => {
+            // Redo: copy source -> dest
+            if src.exists() {
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::copy(src, dest)?;
+            }
+        }
+        "rename" => {
+            // Redo: rename source -> dest
+            if src.exists() {
+                fs::rename(src, dest)?;
+            }
+        }
+        _ => {
+            return Err(format!("Unknown operation type: {}", entry.operation_type).into());
+        }
+    }
+
+    Ok(())
+}
+
 pub fn undo_last() -> Result<Option<JournalEntry>, String> {
-    with_db(|db| {
+    let entry = with_db(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -126,19 +203,29 @@ pub fn undo_last() -> Result<Option<JournalEntry>, String> {
             )
             .optional()
             .map_err(|e| e.to_string())?;
-        if let Some(ref e) = entry {
+        Ok(entry)
+    })?;
+
+    if let Some(ref e) = entry {
+        // Actually reverse the file operation
+        reverse_operation(e).map_err(|e| e.to_string())?;
+
+        // Mark as reverted in DB
+        with_db(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 1 WHERE id = ?1",
                 params![e.id],
             )
             .map_err(|e| e.to_string())?;
-        }
-        Ok(entry)
-    })
+            Ok(())
+        })?;
+    }
+
+    Ok(entry)
 }
 
 pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
-    with_db(|db| {
+    let entry = with_db(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -158,19 +245,29 @@ pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
             )
             .optional()
             .map_err(|e| e.to_string())?;
-        if let Some(ref e) = entry {
+        Ok(entry)
+    })?;
+
+    if let Some(ref e) = entry {
+        // Actually reverse the file operation
+        reverse_operation(e).map_err(|e| e.to_string())?;
+
+        // Mark as reverted in DB
+        with_db(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 1 WHERE id = ?1",
                 params![e.id],
             )
             .map_err(|e| e.to_string())?;
-        }
-        Ok(entry)
-    })
+            Ok(())
+        })?;
+    }
+
+    Ok(entry)
 }
 
 pub fn redo_last() -> Result<Option<JournalEntry>, String> {
-    with_db(|db| {
+    let entry = with_db(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -192,13 +289,23 @@ pub fn redo_last() -> Result<Option<JournalEntry>, String> {
             )
             .optional()
             .map_err(|e| e.to_string())?;
-        if let Some(ref e) = entry {
+        Ok(entry)
+    })?;
+
+    if let Some(ref e) = entry {
+        // Actually redo the file operation
+        forward_operation(e).map_err(|e| e.to_string())?;
+
+        // Mark as not reverted in DB
+        with_db(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 0 WHERE id = ?1",
                 params![e.id],
             )
             .map_err(|e| e.to_string())?;
-        }
-        Ok(entry)
-    })
+            Ok(())
+        })?;
+    }
+
+    Ok(entry)
 }

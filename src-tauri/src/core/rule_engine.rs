@@ -234,11 +234,20 @@ fn apply_actions(
 }
 
 pub fn apply_rules(dir: &str, dry_run: bool) -> Result<OrganizeResult, Box<dyn std::error::Error>> {
+    apply_rules_recursive(dir, dry_run, 0, 1)
+}
+
+pub fn apply_rules_recursive(
+    dir: &str,
+    dry_run: bool,
+    current_depth: u32,
+    max_depth: u32,
+) -> Result<OrganizeResult, Box<dyn std::error::Error>> {
     let rules = load_rules();
     let enabled_rules: Vec<&Rule> = rules.iter().filter(|r| r.enabled).collect();
     let files = scan_directory(dir)?;
     let mut result = OrganizeResult {
-        total_files: files.len(),
+        total_files: 0,
         moved: 0,
         skipped: 0,
         errors: Vec::new(),
@@ -247,9 +256,24 @@ pub fn apply_rules(dir: &str, dry_run: bool) -> Result<OrganizeResult, Box<dyn s
 
     for file in &files {
         if file.is_dir {
-            result.skipped += 1;
+            // Recurse into subdirectories if within depth limit
+            if current_depth < max_depth {
+                match apply_rules_recursive(&file.path, dry_run, current_depth + 1, max_depth) {
+                    Ok(sub_result) => {
+                        result.total_files += sub_result.total_files;
+                        result.moved += sub_result.moved;
+                        result.skipped += sub_result.skipped;
+                        result.errors.extend(sub_result.errors);
+                    }
+                    Err(e) => result.errors.push(format!("{}: {}", file.name, e)),
+                }
+            } else {
+                result.skipped += 1;
+            }
             continue;
         }
+
+        result.total_files += 1;
 
         // Find first matching rule
         let matched = enabled_rules.iter().find(|r| evaluate(&file.path, r));
