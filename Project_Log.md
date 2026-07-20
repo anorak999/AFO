@@ -90,6 +90,26 @@ Development log. Append-only. Every commit, push, code change, and decision is r
   - Requires `sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev`
   - **Blocker**: No sudo access in this session — user must install manually or configure NOPASSWD
 
+### Phase 2 Frontend — App Shell + OrganizePanel (2025-07-20)
+- Installed `@tauri-apps/plugin-dialog` and `@tauri-apps/plugin-fs` npm packages
+- Created `src/lib/store.ts` — Zustand store for panel navigation (`activePanel` state)
+- Wired `src/App.tsx` — Sidebar + panel switching layout, dark theme, h-screen
+- Updated `src/components/Sidebar/Sidebar.tsx` — Active state tracking via zustand, data-driven nav items
+- Built `src/components/OrganizePanel/OrganizePanel.tsx` — Full UI:
+  - Directory picker via `@tauri-apps/plugin-dialog` with try/catch fallback
+  - Mode tabs: By Extension / By Date / Batch Rename
+  - Date format dropdown, rename pattern input
+  - Dry-run toggle (default ON)
+  - Scan button → file count + mini table (max 20 rows)
+  - Execute button → calls bridge functions per mode
+  - Result card: total/moved/skipped, dry-run badge, errors
+- Created `src/types/tauri-plugins.d.ts` — Ambient type declaration for dialog plugin
+- Fixed CSS import order (`@import` before `@tailwind` directives)
+- Added `tauri-plugin-dialog` to Cargo.toml + registered in lib.rs
+- Added dialog permissions to tauri.conf.json
+- Frontend builds clean (`npm run build` passes)
+- Commit: `feat: add dialog plugin, fix CSS import order, wire up app shell`
+
 ## 2025-07-21 — App Shell & Full OrganizePanel
 
 ### What changed

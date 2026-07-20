@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
@@ -17,6 +18,87 @@ pub struct OrganizeResult {
     pub skipped: usize,
     pub errors: Vec<String>,
     pub dry_run: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CategoryConfig {
+    /// Maps category name -> list of extensions (without dots)
+    pub categories: HashMap<String, Vec<String>>,
+}
+
+impl Default for CategoryConfig {
+    fn default() -> Self {
+        let mut categories = HashMap::new();
+        categories.insert("images".into(), vec!["jpg","jpeg","png","gif","bmp","svg","webp","heic"].into_iter().map(String::from).collect());
+        categories.insert("documents".into(), vec!["pdf","doc","docx","txt","rtf","odt"].into_iter().map(String::from).collect());
+        categories.insert("audio".into(), vec!["mp3","wav","flac","aac","ogg","m4a"].into_iter().map(String::from).collect());
+        categories.insert("video".into(), vec!["mp4","mkv","avi","mov","wmv","flv"].into_iter().map(String::from).collect());
+        categories.insert("archives".into(), vec!["zip","tar","gz","rar","7z"].into_iter().map(String::from).collect());
+        categories.insert("code".into(), vec!["rs","py","js","ts","go","c","cpp","h"].into_iter().map(String::from).collect());
+        Self { categories }
+    }
+}
+
+impl CategoryConfig {
+    /// Load from ~/.config/afo/config.json, falling back to defaults
+    pub fn load() -> Self {
+        let config_path = dirs::config_dir()
+            .map(|p| p.join("afo").join("config.json"));
+
+        match config_path {
+            Some(path) if path.exists() => {
+                match std::fs::read_to_string(&path) {
+                    Ok(content) => {
+                        // Try to extract just the categories field
+                        #[derive(Deserialize)]
+                        struct ConfigFile {
+                            #[serde(default)]
+                            categories: Option<HashMap<String, Vec<String>>>,
+                        }
+                        match serde_json::from_str::<ConfigFile>(&content) {
+                            Ok(cfg) => {
+                                if let Some(cats) = cfg.categories {
+                                    return Self { categories: cats };
+                                }
+                            }
+                            Err(_) => {} // fall through to defaults
+                        }
+                        Self::default()
+                    }
+                    Err(_) => Self::default(),
+                }
+            }
+            _ => Self::default(),
+        }
+    }
+
+    /// Map an extension to its category, or "other"
+    pub fn categorize(&self, ext: &str) -> &str {
+        let ext_lower = ext.to_lowercase();
+        for (category, extensions) in &self.categories {
+            if extensions.iter().any(|e| e.eq_ignore_ascii_case(&ext_lower)) {
+                return category;
+            }
+        }
+        "other"
+    }
+}
+
+/// Generate a unique target path by appending _1, _2, ... on collision
+fn unique_path(target: &Path) -> PathBuf {
+    if !target.exists() {
+        return target.to_path_buf();
+    }
+    let stem = target.file_stem().unwrap_or_default().to_string_lossy();
+    let ext = target.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    let parent = target.parent().unwrap_or(Path::new("."));
+    for i in 1u32.. {
+        let candidate = parent.join(format!("{}_{}{}", stem, i, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    unreachable!()
 }
 
 pub fn scan_directory(path: &str) -> Result<Vec<FileInfo>, Box<dyn std::error::Error>> {
@@ -56,6 +138,7 @@ pub async fn organize_by_extension(
     dry_run: bool,
 ) -> Result<OrganizeResult, Box<dyn std::error::Error>> {
     let files = scan_directory(path)?;
+    let config = CategoryConfig::load();
     let mut result = OrganizeResult {
         total_files: files.len(),
         moved: 0,
@@ -70,16 +153,7 @@ pub async fn organize_by_extension(
             continue;
         }
 
-        let category = match file.extension.to_lowercase().as_str() {
-            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" | "heic" => "images",
-            "pdf" | "doc" | "docx" | "txt" | "rtf" | "odt" => "documents",
-            "mp3" | "wav" | "flac" | "aac" | "ogg" | "m4a" => "audio",
-            "mp4" | "mkv" | "avi" | "mov" | "wmv" | "flv" => "video",
-            "zip" | "tar" | "gz" | "rar" | "7z" => "archives",
-            "rs" | "py" | "js" | "ts" | "go" | "c" | "cpp" | "h" => "code",
-            _ => "other",
-        };
-
+        let category = config.categorize(&file.extension);
         let target_dir = std::path::Path::new(path).join(category);
 
         if dry_run {
@@ -91,15 +165,10 @@ pub async fn organize_by_extension(
             std::fs::create_dir_all(&target_dir)?;
         }
 
-        let target_file = target_dir.join(&file.name);
-        if !target_file.exists() {
-            std::fs::rename(&file.path, &target_file)?;
-            result.moved += 1;
-        } else {
-            result.errors.push(format!(
-                "Collision: {} already exists in {}",
-                file.name, category
-            ));
+        let target_file = unique_path(&target_dir.join(&file.name));
+        match std::fs::rename(&file.path, &target_file) {
+            Ok(()) => result.moved += 1,
+            Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
         }
     }
 
@@ -141,15 +210,10 @@ pub async fn organize_by_date(
             std::fs::create_dir_all(&target_dir)?;
         }
 
-        let target_file = target_dir.join(&file.name);
-        if !target_file.exists() {
-            std::fs::rename(&file.path, &target_file)?;
-            result.moved += 1;
-        } else {
-            result.errors.push(format!(
-                "Collision: {} already exists in {}",
-                file.name, date_folder
-            ));
+        let target_file = unique_path(&target_dir.join(&file.name));
+        match std::fs::rename(&file.path, &target_file) {
+            Ok(()) => result.moved += 1,
+            Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
         }
     }
 
@@ -192,14 +256,10 @@ pub async fn batch_rename(
             continue;
         }
 
-        if !new_path.exists() {
-            std::fs::rename(&file.path, &new_path)?;
-            result.moved += 1;
-        } else {
-            result.errors.push(format!(
-                "Collision: {} already exists",
-                new_name
-            ));
+        let target = unique_path(&new_path);
+        match std::fs::rename(&file.path, &target) {
+            Ok(()) => result.moved += 1,
+            Err(e) => result.errors.push(format!("Failed to rename {}: {}", file.name, e)),
         }
 
         counter += 1;
