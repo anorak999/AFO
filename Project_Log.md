@@ -77,3 +77,33 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - Create GitHub repo `AF0` via `gh`
 - First commit and push
 - Smoke test `cargo tauri dev`
+
+### Phase 1 Completion (2025-07-20)
+- Ran `npm install` — generated `package-lock.json` (193 packages)
+- Created GitHub repo `https://github.com/anorak999/AF0` via `gh repo create AF0 --private`
+- First commit: `feat: initial Tauri v2 scaffold with React frontend and Rust backend` (49 files)
+- Pushed to `origin/master`
+- Frontend builds successfully (`npm run build` — Vite production build OK)
+- **Rust backend smoke test blocked**: Missing GTK3/WebKit2GTK dev headers on this system
+  - Error: `gdk-3.0.pc` not found — need `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`
+  - Runtime libs installed (`libwebkit2gtk-4.1-0`) but not `-dev` packages
+  - Requires `sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev`
+  - **Blocker**: No sudo access in this session — user must install manually or configure NOPASSWD
+
+## 2025-07-21 — App Shell & Full OrganizePanel
+
+### What changed
+- **`src/lib/store.ts`** (new) — Zustand store for active panel state (`Panel` union type)
+- **`src/App.tsx`** — Replaced placeholder with flex layout: Sidebar (256px) + main content area, zustand-driven panel routing
+- **`src/components/Sidebar/Sidebar.tsx`** — Reads `activePanel` from zustand store, highlights active nav item with `bg-white/10`, data-driven NAV_ITEMS array
+- **`src/components/Sidebar/index.tsx`** — Updated to re-export from `./Sidebar`
+- **`src/components/OrganizePanel/OrganizePanel.tsx`** — Full UI: directory picker (try/catch around `@tauri-apps/plugin-dialog` dynamic import), mode tabs (extension/date/rename), date format selector, rename pattern input with placeholder docs, dry-run toggle, scan + execute buttons calling tauri-bridge functions, result summary card, scan results table (max 20 rows)
+- **`src/components/OrganizePanel/index.tsx`** — Updated to re-export from `./OrganizePanel`
+- **`src/types/tauri-plugins.d.ts`** (new) — Ambient type declaration for `@tauri-apps/plugin-dialog` (not yet installed as npm dep)
+
+### Design decisions
+- Zustand chosen over lifting state to App because it's already installed and keeps components decoupled
+- Directory picker wrapped in dynamic `import()` + try/catch so app works before the dialog plugin is installed — falls back to error text
+- Rename mode disables Execute if pattern is empty
+- Dry run defaults to ON to prevent accidental moves
+- OrganizeResult uses the existing `tauri-bridge.ts` interface types directly — no duplication

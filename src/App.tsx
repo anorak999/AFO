@@ -1,13 +1,35 @@
-function App() {
+import { useAppStore } from "./lib/store";
+import Sidebar from "./components/Sidebar";
+import OrganizePanel from "./components/OrganizePanel";
+import RuleBuilder from "./components/RuleBuilder";
+import DuplicatesPanel from "./components/DuplicatesPanel";
+import HistoryPanel from "./components/HistoryPanel";
+import SettingsPanel from "./components/SettingsPanel";
+
+function ActivePanel() {
+  const activePanel = useAppStore((s) => s.activePanel);
+
+  switch (activePanel) {
+    case "organize":
+      return <OrganizePanel />;
+    case "rules":
+      return <RuleBuilder />;
+    case "duplicates":
+      return <DuplicatesPanel />;
+    case "history":
+      return <HistoryPanel />;
+    case "settings":
+      return <SettingsPanel />;
+  }
+}
+
+export default function App() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight mb-2">AFO</h1>
-        <p className="text-white/40 text-sm">Advanced File Organizer v2.0</p>
-        <p className="text-white/20 text-xs mt-4">Tauri + React + Rust</p>
-      </div>
+    <div className="flex h-screen w-screen overflow-hidden bg-[#050505] text-white">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
+        <ActivePanel />
+      </main>
     </div>
   );
 }
-
-export default App;
