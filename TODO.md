@@ -47,9 +47,9 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] IPC commands: `list_rules`, `get_rule`, `create_rule`, `update_rule`, `delete_rule`, `apply_rules`
 - [x] `apply_rules(dir, recursive, max_depth)` — scan files, evaluate all rules, execute matched actions, return results
 - [x] Recursive mode with configurable max depth (default 5)
-- [ ] Frontend `RuleBuilder` — React Flow canvas, condition nodes, action nodes, trigger node, connected by edges
-- [ ] Node palette: drag condition/action types onto canvas
-- [ ] Property panel: edit node properties (field, operator, value for conditions; type, target for actions)
+- [x] Frontend `RuleBuilder` — React Flow canvas, condition nodes, action nodes, trigger node, connected by edges
+- [x] Node palette: drag condition/action types onto canvas
+- [x] Property panel: edit node properties (field, operator, value for conditions; type, target for actions)
 - [x] Rule validation: client-side regex check before save, server re-validates on apply
 - [x] Save/load rules to/from backend via IPC
 - [x] Rule list view: table of saved rules with enable/disable toggle, edit/delete actions
@@ -66,7 +66,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Frontend `DuplicatesPanel` — duplicate groups list, checkbox per file, size per group, total recoverable space
 - [x] Batch actions: "Quarantine selected", "Keep first only", "Review all"
 - [ ] Progress events during parallel hashing
-- [ ] Quarantine cleanup: config for auto-delete after N days (default 30)
+- [x] Quarantine cleanup: config for auto-delete after N days (default 30)
 
 ---
 
@@ -134,7 +134,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [ ] **Live Preview Pane**: file tree showing what an organize/rule operation would do before committing
 - [ ] Preview updates in real-time as user adjusts parameters
 - [ ] Tree shows source files → destination folders with arrows, color-coded by action type
-- [ ] **Sidebar navigation** — animate active indicator, panel transitions with Framer Motion
+- [x] **Sidebar navigation** — animate active indicator, panel transitions with Framer Motion
 - [ ] **Drag-and-drop file intake** — drop files/folders onto the app to organize them
 - [x] Dark theme throughout, consistent with design concept
 - [ ] Responsive layout: works on 1024px+ screens (desktop app, but don't break on smaller monitors)
@@ -152,9 +152,9 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [ ] Performance: profile batch operations on 10k+ files, ensure UI stays responsive
 - [ ] Installers: `.deb` / `.AppImage` (Linux), `.msi` (Windows), `.dmg` (macOS)
 - [ ] App icon and branding assets
-- [ ] Structured logging via `tracing` — log to `~/.local/share/afo/afo.log`
+- [x] Structured logging via `tracing` — log to `~/.local/share/afo/afo.log`
 - [ ] Cloud sync stub: placeholder UI and IPC, no real API calls (defer to post-launch)
 - [ ] ML categorization stub: TF-IDF filename similarity, labeled "suggestion" in UI (defer to post-launch)
 - [ ] Final UI polish: transitions, hover states, empty states, loading skeletons
-- [ ] README with build instructions, features overview, screenshots
+- [x] README with build instructions, features overview, screenshots
 - [ ] Tag v2.0 release
