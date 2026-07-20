@@ -1,7 +1,229 @@
-// Duplicate detection via blake3 hashing + rayon parallelism
-// Phase 4 implementation
+use std::collections::HashMap;
+use std::error::Error;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
-pub fn scan_duplicates(_dir: &str) -> Vec<Vec<String>> {
-    // TODO: Phase 4
-    Vec::new()
+use chrono::Utc;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+
+const CHUNK_SIZE: usize = 64 * 1024;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DuplicateGroup {
+    pub hash: String,
+    pub files: Vec<DuplicateFile>,
+    pub total_size: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DuplicateFile {
+    pub path: String,
+    pub size: u64,
+    pub is_keeper: bool,
+}
+
+fn hash_file(path: &Path) -> Option<String> {
+    let mut file = fs::File::open(path).ok()?;
+    let mut hasher = blake3::Hasher::new();
+    let mut buf = [0u8; CHUNK_SIZE];
+    loop {
+        let n = file.read(&mut buf).ok()?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Some(hasher.finalize().to_hex().to_string())
+}
+
+fn collect_files(dir: &Path, recursive: bool, max_depth: u32) -> Vec<PathBuf> {
+    let mut results = Vec::new();
+    if recursive {
+        collect_recursive(dir, 0, max_depth, &mut results);
+    } else if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_file() && !is_symlink(&p) {
+                if let Ok(meta) = fs::metadata(&p) {
+                    if meta.len() >= 1 {
+                        results.push(p);
+                    }
+                }
+            }
+        }
+    }
+    results
+}
+
+fn collect_recursive(dir: &Path, depth: u32, max_depth: u32, out: &mut Vec<PathBuf>) {
+    if depth > max_depth {
+        return;
+    }
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if p.is_dir() {
+            collect_recursive(&p, depth + 1, max_depth, out);
+        } else if p.is_file() && !is_symlink(&p) {
+            if let Ok(meta) = fs::metadata(&p) {
+                if meta.len() >= 1 {
+                    out.push(p);
+                }
+            }
+        }
+    }
+}
+
+fn is_symlink(path: &Path) -> bool {
+    fs::symlink_metadata(path)
+        .map(|m| m.file_type().is_symlink())
+        .unwrap_or(false)
+}
+
+pub fn scan_duplicates(
+    dir: &str,
+    recursive: bool,
+    max_depth: u32,
+) -> Result<Vec<DuplicateGroup>, Box<dyn Error>> {
+    let root = Path::new(dir);
+    if !root.is_dir() {
+        return Err(format!("{} is not a directory", dir).into());
+    }
+
+    let files = collect_files(root, recursive, max_depth);
+
+    // Hash all files in parallel
+    let hashed: Vec<(PathBuf, String, u64)> = files
+        .par_iter()
+        .filter_map(|path| {
+            let hash = hash_file(path)?;
+            let size = fs::metadata(path).ok()?.len();
+            Some((path.clone(), hash, size))
+        })
+        .collect();
+
+    // Group by hash
+    let mut groups: HashMap<String, Vec<(PathBuf, u64, SystemTime)>> = HashMap::new();
+    for (path, hash, size) in hashed {
+        let modified = fs::metadata(&path)
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        groups.entry(hash).or_default().push((path, size, modified));
+    }
+
+    // Filter to groups with 2+ files and build output
+    let mut result: Vec<DuplicateGroup> = groups
+        .into_iter()
+        .filter(|(_, entries)| entries.len() >= 2)
+        .map(|(hash, mut entries)| {
+            // Sort: shortest path first, then earliest modified
+            entries.sort_by(|a, b| {
+                a.0.to_string_lossy()
+                    .len()
+                    .cmp(&b.0.to_string_lossy().len())
+                    .then(a.2.cmp(&b.2))
+            });
+
+            let total_size = entries.iter().map(|e| e.1).sum();
+            let files = entries
+                .into_iter()
+                .enumerate()
+                .map(|(i, (path, size, _))| DuplicateFile {
+                    path: path.to_string_lossy().to_string(),
+                    size,
+                    is_keeper: i == 0,
+                })
+                .collect();
+
+            DuplicateGroup {
+                hash,
+                files,
+                total_size,
+            }
+        })
+        .collect();
+
+    result.sort_by(|a, b| b.total_size.cmp(&a.total_size));
+    Ok(result)
+}
+
+fn quarantine_base() -> PathBuf {
+    dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("afo")
+        .join("quarantine")
+}
+
+pub fn quarantine_duplicates(
+    groups: &[DuplicateGroup],
+    indices: &[usize],
+) -> Result<(), Box<dyn Error>> {
+    let base = quarantine_base();
+    fs::create_dir_all(&base)?;
+
+    for &idx in indices {
+        let group = groups
+            .get(idx)
+            .ok_or_else(|| -> Box<dyn Error> { format!("invalid group index {}", idx).into() })?;
+        let hash_prefix = &group.hash[..2.min(group.hash.len())];
+
+        for file in &group.files {
+            if file.is_keeper {
+                continue;
+            }
+            let src = Path::new(&file.path);
+            if !src.exists() {
+                continue;
+            }
+
+            let dest_dir = base.join(hash_prefix);
+            fs::create_dir_all(&dest_dir)?;
+
+            let filename = src
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+
+            let dest = dest_dir.join(&filename);
+            fs::rename(src, &dest)?;
+
+            // Write sidecar
+            let meta = serde_json::json!({
+                "original_path": file.path,
+                "hash": group.hash,
+                "size": file.size,
+                "quarantined_at": Utc::now().to_rfc3339(),
+            });
+            let sidecar = dest_dir.join(format!("{}.meta.json", filename));
+            fs::write(&sidecar, serde_json::to_string_pretty(&meta)?)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn delete_duplicates(
+    groups: &[DuplicateGroup],
+    indices: &[usize],
+) -> Result<(), Box<dyn Error>> {
+    for &idx in indices {
+        let group = groups
+            .get(idx)
+            .ok_or_else(|| -> Box<dyn Error> { format!("invalid group index {}", idx).into() })?;
+        for file in &group.files {
+            if file.is_keeper {
+                continue;
+            }
+            let path = Path::new(&file.path);
+            if path.exists() {
+                fs::remove_file(path)?;
+            }
+        }
+    }
+    Ok(())
 }

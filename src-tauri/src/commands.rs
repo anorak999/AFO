@@ -1,3 +1,4 @@
+use crate::core::duplicates;
 use crate::core::organizer;
 use crate::core::rule_engine;
 
@@ -53,4 +54,30 @@ pub async fn apply_rules(
     dry_run: bool,
 ) -> Result<organizer::OrganizeResult, String> {
     rule_engine::apply_rules(&path, dry_run).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn scan_duplicates_cmd(
+    path: String,
+    recursive: bool,
+    max_depth: Option<u32>,
+) -> Result<Vec<duplicates::DuplicateGroup>, String> {
+    let depth = max_depth.unwrap_or(5);
+    duplicates::scan_duplicates(&path, recursive, depth).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn quarantine_duplicates_cmd(
+    groups: Vec<duplicates::DuplicateGroup>,
+    indices: Vec<usize>,
+) -> Result<(), String> {
+    duplicates::quarantine_duplicates(&groups, &indices).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_duplicates_cmd(
+    groups: Vec<duplicates::DuplicateGroup>,
+    indices: Vec<usize>,
+) -> Result<(), String> {
+    duplicates::delete_duplicates(&groups, &indices).map_err(|e| e.to_string())
 }

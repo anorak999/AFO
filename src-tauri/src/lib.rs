@@ -13,6 +13,9 @@ pub fn run() {
             commands::list_rules,
             commands::save_rules,
             commands::apply_rules,
+            commands::scan_duplicates_cmd,
+            commands::quarantine_duplicates_cmd,
+            commands::delete_duplicates_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
