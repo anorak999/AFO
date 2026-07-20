@@ -338,3 +338,36 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `src/lib/tauri-bridge.ts` — added metadata, watcher, scheduler types and functions
 - `src/components/SettingsPanel/SettingsPanel.tsx` — full settings UI
 - `TODO.md` — updated 5 items from [ ] to [x]
+
+## 2025-07-21 — UI Polish & Tooling
+
+### Live Progress Events
+- Added `ProgressEvent` struct to `commands.rs` with current, total, file, status fields
+- `organize_by_extension`, `organize_by_date`, `batch_rename` now accept `tauri::AppHandle`
+- Each command emits `afo://progress` events during iteration
+- Frontend `OrganizePanel.tsx` listens via `@tauri-apps/api/event` `listen()`
+- Progress bar UI: shows current file, count, and animated progress bar
+
+### Framer Motion Transitions
+- `App.tsx`: `AnimatePresence` with `mode="wait"` for panel crossfade
+- Panel animation: opacity 0→1, y 8→0, 150ms easeOut
+- `Sidebar.tsx`: `motion.div` with `layoutId="sidebar-active"` for animated active indicator
+- Spring animation: bounce 0.2, duration 0.3
+
+### ESLint + Prettier Setup
+- Installed: `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, `prettier`, `eslint-config-prettier`
+- `eslint.config.js` — flat config format (ESLint v9+)
+- `.prettierrc.json` — 100 char width, double quotes, trailing commas
+- `.prettierignore` — node_modules, dist, target, src-tauri
+- Package.json scripts: `lint`, `lint:fix`, `format`, `format:check`
+- Fixed lint issues: unused expressions in DuplicatesPanel, setState in effects
+
+### Commits
+- `276a587` feat: implement metadata extraction, folder watching, scheduling, undo reversal, recursive rules
+- `52b420a` feat: add live progress events, Framer Motion transitions, ESLint/Prettier
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `npx eslint src` — ✅ Clean (0 errors)
+- `npx prettier --check` — ✅ All files formatted
