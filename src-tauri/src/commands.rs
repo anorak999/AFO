@@ -1,4 +1,5 @@
 use crate::core::duplicates;
+use crate::core::journal;
 use crate::core::organizer;
 use crate::core::rule_engine;
 
@@ -80,4 +81,27 @@ pub async fn delete_duplicates_cmd(
     indices: Vec<usize>,
 ) -> Result<(), String> {
     duplicates::delete_duplicates(&groups, &indices).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_history(
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<journal::JournalEntry>, String> {
+    journal::get_history(limit.unwrap_or(50), offset.unwrap_or(0))
+}
+
+#[tauri::command]
+pub async fn undo_last() -> Result<Option<journal::JournalEntry>, String> {
+    journal::undo_last()
+}
+
+#[tauri::command]
+pub async fn undo_operation(id: i64) -> Result<Option<journal::JournalEntry>, String> {
+    journal::undo_operation(id)
+}
+
+#[tauri::command]
+pub async fn redo_last() -> Result<Option<journal::JournalEntry>, String> {
+    journal::redo_last()
 }

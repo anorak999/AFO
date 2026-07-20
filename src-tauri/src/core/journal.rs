@@ -1,8 +1,14 @@
 // Undo/redo journal — SQLite via rusqlite
-// Phase 6 implementation
 
+use std::fs;
+use std::sync::{Mutex, OnceLock};
+
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JournalEntry {
-    pub id: u64,
+    pub id: i64,
     pub operation_type: String,
     pub source_path: String,
     pub dest_path: String,
@@ -10,15 +16,189 @@ pub struct JournalEntry {
     pub reverted: bool,
 }
 
-pub fn init_journal(_db_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Phase 6
+static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
+
+fn db_path() -> std::path::PathBuf {
+    let base = dirs::data_local_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    base.join("afo").join("journal.db")
+}
+
+fn with_db<F, R>(f: F) -> Result<R, String>
+where
+    F: FnOnce(&Connection) -> Result<R, String>,
+{
+    let db = DB
+        .get()
+        .ok_or("Journal not initialized — call init_journal()")?
+        .lock()
+        .map_err(|e| e.to_string())?;
+    f(&db)
+}
+
+pub fn init_journal() -> Result<(), Box<dyn std::error::Error>> {
+    let path = db_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let db = Connection::open(path)?;
+    db.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         CREATE TABLE IF NOT EXISTS operations (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             operation_type TEXT NOT NULL,
+             source_path TEXT NOT NULL,
+             dest_path TEXT NOT NULL,
+             timestamp TEXT NOT NULL,
+             reverted INTEGER NOT NULL DEFAULT 0
+         );",
+    )?;
+    DB.set(Mutex::new(db))
+        .map_err(|_| "Journal already initialized")?;
     Ok(())
 }
 
-pub fn record_operation(
-    _db_path: &str,
-    _entry: &JournalEntry,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: Phase 6
-    Ok(())
+pub fn record_operation(entry: &JournalEntry) -> Result<(), String> {
+    with_db(|db| {
+        db.execute(
+            "INSERT INTO operations (operation_type, source_path, dest_path, timestamp, reverted)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                entry.operation_type,
+                entry.source_path,
+                entry.dest_path,
+                entry.timestamp,
+                entry.reverted as i32,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}
+
+pub fn get_history(limit: i64, offset: i64) -> Result<Vec<JournalEntry>, String> {
+    with_db(|db| {
+        let mut stmt = db
+            .prepare(
+                "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
+                 FROM operations
+                 WHERE reverted = 0
+                 ORDER BY timestamp DESC
+                 LIMIT ?1 OFFSET ?2",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![limit, offset], |row| {
+                Ok(JournalEntry {
+                    id: row.get(0)?,
+                    operation_type: row.get(1)?,
+                    source_path: row.get(2)?,
+                    dest_path: row.get(3)?,
+                    timestamp: row.get(4)?,
+                    reverted: row.get::<_, i32>(5)? != 0,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        let entries: Vec<JournalEntry> = rows.filter_map(|r| r.ok()).collect();
+        Ok(entries)
+    })
+}
+
+pub fn undo_last() -> Result<Option<JournalEntry>, String> {
+    with_db(|db| {
+        let entry: Option<JournalEntry> = db
+            .query_row(
+                "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
+                 FROM operations
+                 WHERE reverted = 0
+                 ORDER BY timestamp DESC
+                 LIMIT 1",
+                [],
+                |row| {
+                    Ok(JournalEntry {
+                        id: row.get(0)?,
+                        operation_type: row.get(1)?,
+                        source_path: row.get(2)?,
+                        dest_path: row.get(3)?,
+                        timestamp: row.get(4)?,
+                        reverted: row.get::<_, i32>(5)? != 0,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        if let Some(ref e) = entry {
+            db.execute(
+                "UPDATE operations SET reverted = 1 WHERE id = ?1",
+                params![e.id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(entry)
+    })
+}
+
+pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
+    with_db(|db| {
+        let entry: Option<JournalEntry> = db
+            .query_row(
+                "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
+                 FROM operations
+                 WHERE id = ?1",
+                params![id],
+                |row| {
+                    Ok(JournalEntry {
+                        id: row.get(0)?,
+                        operation_type: row.get(1)?,
+                        source_path: row.get(2)?,
+                        dest_path: row.get(3)?,
+                        timestamp: row.get(4)?,
+                        reverted: row.get::<_, i32>(5)? != 0,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        if let Some(ref e) = entry {
+            db.execute(
+                "UPDATE operations SET reverted = 1 WHERE id = ?1",
+                params![e.id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(entry)
+    })
+}
+
+pub fn redo_last() -> Result<Option<JournalEntry>, String> {
+    with_db(|db| {
+        let entry: Option<JournalEntry> = db
+            .query_row(
+                "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
+                 FROM operations
+                 WHERE reverted = 1
+                 ORDER BY timestamp DESC
+                 LIMIT 1",
+                [],
+                |row| {
+                    Ok(JournalEntry {
+                        id: row.get(0)?,
+                        operation_type: row.get(1)?,
+                        source_path: row.get(2)?,
+                        dest_path: row.get(3)?,
+                        timestamp: row.get(4)?,
+                        reverted: row.get::<_, i32>(5)? != 0,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        if let Some(ref e) = entry {
+            db.execute(
+                "UPDATE operations SET reverted = 0 WHERE id = ?1",
+                params![e.id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(entry)
+    })
 }

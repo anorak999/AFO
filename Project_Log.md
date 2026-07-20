@@ -193,3 +193,34 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo check` still blocked by missing GTK dev headers — structural verification via `rustfmt --edition 2021` confirms no syntax issues in our files
 - No new dependencies added — uses existing blake3, rayon, chrono, dirs, serde_json
 - Commit: `31be798` feat: implement duplicate detection with blake3 + rayon parallelism
+
+## [2026-07-21] Undo/Redo Journal System
+
+### Changes
+- **`src-tauri/src/core/journal.rs`** — Full implementation replacing 24-line stub
+  - `JournalEntry` struct with Serialize/Deserialize, id as i64, reverted as bool
+  - `OnceLock<Mutex<Connection>>` for module-level DB state (initialized once at startup)
+  - `init_journal()` — opens/creates SQLite DB at `~/.local/share/afo/journal.db`, WAL mode, creates `operations` table, creates parent dirs
+  - `record_operation()` — INSERT new operation row
+  - `get_history(limit, offset)` — SELECT non-reverted entries, ORDER BY timestamp DESC
+  - `undo_last()` — SELECT most recent non-reverted entry, mark reverted=1, return it
+  - `undo_operation(id)` — SELECT specific entry, mark reverted=1, return it
+  - `redo_last()` — SELECT most recent reverted entry, mark reverted=0, return it
+  - Uses `rusqlite::OptionalExtension` for `.optional()` on query_row results
+  - All queries use `rusqlite::params![]` for parameterized access
+- **`src-tauri/src/commands.rs`** — Added 4 IPC commands
+  - `get_history(limit: Option<i64>, offset: Option<i64>)` — defaults: limit=50, offset=0
+  - `undo_last()` — delegates to journal module
+  - `undo_operation(id: i64)` — delegates to journal module
+  - `redo_last()` — delegates to journal module
+- **`src-tauri/src/lib.rs`** — Registered all 4 new commands in invoke_handler
+
+### Architecture Decisions
+- `OnceLock<Mutex<Connection>>` over open-per-call: avoids repeated `Connection::open` overhead; SQLite WAL handles concurrent reads while Mutex serializes writes
+- `with_db()` helper reduces boilerplate — all DB functions use same lock-acquire pattern
+- Journal returns `Option<JournalEntry>` (not error) when entry not found — caller decides if that's an error
+- `record_operation()` doesn't auto-generate timestamps — caller provides them (keeps function pure)
+
+### Notes
+- `cargo check` blocked by missing GTK dev headers (pre-existing) — `rustfmt --edition 2021 --check` confirms no syntax issues
+- No new dependencies added — uses existing rusqlite, serde, dirs, std (OnceLock, Mutex, fs)
