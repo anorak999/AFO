@@ -85,7 +85,7 @@ impl CategoryConfig {
 }
 
 /// Generate a unique target path by appending _1, _2, ... on collision
-fn unique_path(target: &Path) -> PathBuf {
+pub(crate) fn unique_path(target: &Path) -> PathBuf {
     if !target.exists() {
         return target.to_path_buf();
     }

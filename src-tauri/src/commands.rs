@@ -1,4 +1,5 @@
 use crate::core::organizer;
+use crate::core::rule_engine;
 
 #[tauri::command]
 pub async fn scan_directory(path: String) -> Result<Vec<organizer::FileInfo>, String> {
@@ -34,4 +35,22 @@ pub async fn batch_rename(
     organizer::batch_rename(&path, &pattern, dry_run)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_rules() -> Result<Vec<rule_engine::Rule>, String> {
+    Ok(rule_engine::load_rules())
+}
+
+#[tauri::command]
+pub async fn save_rules(rules: Vec<rule_engine::Rule>) -> Result<(), String> {
+    rule_engine::save_rules(&rules).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn apply_rules(
+    path: String,
+    dry_run: bool,
+) -> Result<organizer::OrganizeResult, String> {
+    rule_engine::apply_rules(&path, dry_run).map_err(|e| e.to_string())
 }

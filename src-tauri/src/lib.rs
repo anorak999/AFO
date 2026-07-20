@@ -10,6 +10,9 @@ pub fn run() {
             commands::organize_by_extension,
             commands::organize_by_date,
             commands::batch_rename,
+            commands::list_rules,
+            commands::save_rules,
+            commands::apply_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
