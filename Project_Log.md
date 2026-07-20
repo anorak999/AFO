@@ -371,3 +371,40 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `npx tsc --noEmit` — ✅ Clean
 - `npx eslint src` — ✅ Clean (0 errors)
 - `npx prettier --check` — ✅ All files formatted
+
+## 2025-07-21 — Remaining Items Complete
+
+### React Flow Visual Rule Builder
+- Created `RuleFlowEditor.tsx` — node-based visual editor using React Flow
+- Node types: Trigger (purple), Condition (sky), Action (emerald)
+- Drag-to-connect nodes with animated edges
+- Inline editing of condition fields/operators/values and action types/destinations
+- Toolbar: + Condition, + Action, Cancel, Save
+- `RuleBuilder.tsx` updated with view mode toggle (List/Visual)
+- Flow editor initializes from existing rule data
+
+### Structured Logging (tracing)
+- Added `tracing`, `tracing-subscriber`, `tracing-appender` crates
+- `lib.rs` initializes daily rotating log file at `~/.local/share/afo/afo.log`
+- Commands instrumented with `#[instrument]` and `info!`/`warn!` macros
+- Log level configurable via `RUST_LOG` env var (default: info)
+
+### Quarantine Auto-Cleanup
+- Added `cleanup_quarantine(max_age_days)` to `duplicates.rs`
+- Removes quarantined directories older than N days (default 30)
+- Added `cleanup_quarantine_cmd` IPC command
+- Frontend bridge function `cleanupQuarantine()`
+
+### README
+- Comprehensive build instructions for Linux/Windows/macOS
+- Project structure overview
+- Tech stack table
+- Data locations reference
+- Development commands
+
+### Commits
+- `ed9acbd` feat: add React Flow rule builder, structured logging, quarantine cleanup, README
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
