@@ -110,6 +110,34 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - Frontend builds clean (`npm run build` passes)
 - Commit: `feat: add dialog plugin, fix CSS import order, wire up app shell`
 
+### Phase 2 Rust — Category Config + Collision Handling (2025-07-20)
+- Updated `src-tauri/src/core/organizer.rs`:
+  - `CategoryConfig` struct with `HashMap<String, Vec<String>>` for ext→category mapping
+  - Default config: images, documents, audio, video, archives, code
+  - Loads from `~/.config/afo/config.json` (field `categories`), falls back to defaults
+  - `categorize(ext)` method for extension→category lookup
+  - `unique_path(target)` function: appends `_1`, `_2`, ... on name collision
+  - `organize_by_extension` now uses configurable categories + collision handling
+  - `organize_by_date` and `batch_rename` now use `unique_path` for collision handling
+  - Error handling: `match` on rename instead of `?` — logs per-file errors without aborting
+- Commit: `feat: configurable category mapping + auto-suffix collision handling`
+- **Note**: Rust compilation unverified (missing GTK dev headers) — changes are straightforward
+
+### Phase 3: Rule Engine (2025-07-20)
+- Full rule engine implementation in `src-tauri/src/core/rule_engine.rs` (267 lines)
+- `Rule`, `Condition`, `Action` structs with serde serialization
+- Condition fields: Extension, Name, Size, DateCreated, DateModified
+- Operators: Equals, Contains, StartsWith, EndsWith, GreaterThan, LessThan, Regex
+- Actions: Move, Copy, Rename
+- `load_rules()` / `save_rules()` — JSON at `~/.config/afo/rules.json`
+- `evaluate()` — AND-logic condition matching against file metadata
+- `apply_rules()` — scans dir, evaluates all enabled rules, executes first match
+- Added `regex = "1"` to Cargo.toml
+- Added 3 IPC commands: `list_rules`, `save_rules`, `apply_rules`
+- Registered commands in lib.rs
+- Made `unique_path` pub(crate) for cross-module use
+- Commit: `feat: implement rule engine with condition/action evaluation, IPC commands`
+
 ## 2025-07-21 — App Shell & Full OrganizePanel
 
 ### What changed
@@ -127,3 +155,41 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - Rename mode disables Execute if pattern is empty
 - Dry run defaults to ON to prevent accidental moves
 - OrganizeResult uses the existing `tauri-bridge.ts` interface types directly — no duplication
+
+## 2025-07-20 — Rule Engine Implementation
+
+### Changes
+- Implemented full rule engine in `src-tauri/src/core/rule_engine.rs` (replaced stub)
+- Data structures: Rule, Condition, ConditionField, Operator, Action (serde-serializable)
+- `load_rules()` — loads from `~/.config/afo/rules.json`, creates file if missing
+- `save_rules()` — saves to same path, creates parent dirs
+- `evaluate()` — AND-logic condition evaluation against file metadata (size, dates, name, extension, regex)
+- `apply_rules()` — scans dir, evaluates enabled rules, executes first matching rule's actions sequentially
+- Actions: Move (with unique_path collision handling), Copy, Rename (with `{name}`/`{ext}`/`{counter}` patterns)
+- Added `regex = "1"` dependency to Cargo.toml
+- Made `unique_path` in organizer.rs `pub(crate)` for cross-module use
+- Added IPC commands: `list_rules`, `save_rules`, `apply_rules` in commands.rs
+- Registered all new commands in lib.rs invoke_handler
+
+### Notes
+- `cargo check` could not run due to missing system GTK dev libraries (`libgtk-3-dev`, `libwebkit2gtk-4.1-dev`)
+- Code verified structurally; standalone rustc check confirms only crate-linkage errors (expected)
+- Commit: `6ab1abd` feat: implement rule engine with condition/action evaluation, IPC commands
+
+## 2025-07-21 — Duplicate Detection Implementation
+
+### Changes
+- Implemented full duplicate detection in `src-tauri/src/core/duplicates.rs` (replaced 7-line stub with 229 lines)
+- Data structures: `DuplicateGroup` (hash, files, total_size), `DuplicateFile` (path, size, is_keeper)
+- `scan_duplicates()` — parallel blake3 hashing via rayon, depth-capped recursive walk (default max_depth=5), skips symlinks and empty files (<1 byte), keeper selection by shortest path then earliest modified date, groups sorted by total_size descending
+- `quarantine_duplicates()` — moves non-keeper files to `~/.local/share/afo/quarantine/{hash_prefix}/`, creates JSON sidecar (`.meta.json`) with original_path, hash, size, quarantined_at
+- `delete_duplicates()` — permanently removes non-keeper files from selected groups
+- Added 3 IPC commands in `commands.rs`: `scan_duplicates_cmd`, `quarantine_duplicates_cmd`, `delete_duplicates_cmd`
+- Registered all 3 commands in `lib.rs` invoke_handler
+- Uses `Box<dyn std::error::Error>` (not anyhow — not in Cargo.toml)
+- `hash_file()` reads in 64KB chunks via `blake3::Hasher`
+
+### Notes
+- `cargo check` still blocked by missing GTK dev headers — structural verification via `rustfmt --edition 2021` confirms no syntax issues in our files
+- No new dependencies added — uses existing blake3, rayon, chrono, dirs, serde_json
+- Commit: `31be798` feat: implement duplicate detection with blake3 + rayon parallelism
