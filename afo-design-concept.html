@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AFO — Advanced File Organizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-void: #030303;
+  --bg-surface: #080808;
+  --bg-card: #0c0c0c;
+  --bg-card-elevated: #111111;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(120, 90, 255, 0.15);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.30);
+  --accent-purple: #785AFF;
+  --accent-emerald: #34D399;
+  --accent-amber: #FBBF24;
+  --accent-rose: #FB7185;
+  --accent-sky: #38BDF8;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+  --blur-heavy: blur(40px);
+  --transition-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html {
+  font-family: 'Geist', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg-void);
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════
+   AMBIENT MESH GRADIENT BACKGROUND
+   ═══════════════════════════════════════════════ */
+.ambient-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient-mesh::before {
+  content: '';
+  position: absolute;
+  width: 900px;
+  height: 900px;
+  top: -200px;
+  right: -150px;
+  background: radial-gradient(ellipse at center, rgba(120, 90, 255, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: meshFloat1 20s ease-in-out infinite alternate;
+}
+
+.ambient-mesh::after {
+  content: '';
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  bottom: -100px;
+  left: -100px;
+  background: radial-gradient(ellipse at center, rgba(52, 211, 153, 0.05) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: meshFloat2 25s ease-in-out infinite alternate;
+}
+
+@keyframes meshFloat1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-60px, 40px) scale(1.1); }
+}
+
+@keyframes meshFloat2 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, -30px) scale(1.05); }
+}
+
+/* ═══════════════════════════════════════════════
+   NOISE OVERLAY
+   ═══════════════════════════════════════════════ */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
+
+/* ═══════════════════════════════════════════════
+   APP SHELL — DESKTOP WINDOW CHROME
+   ═══════════════════════════════════════════════ */
+.app-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1440px;
+  margin: 2rem auto;
+  min-height: calc(100dvh - 4rem);
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+  background: var(--bg-surface);
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 4px 60px rgba(0, 0, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════ */
+.sidebar {
+  background: rgba(255, 255, 255, 0.015);
+  border-right: 1px solid var(--border-subtle);
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+.sidebar-brand {
+  padding: 0 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-purple), #5B3FD9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.1),
+    0 2px 8px rgba(120, 90, 255, 0.3);
+}
+
+.sidebar-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.sidebar-version {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-top: 1px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 0 0.75rem;
+}
+
+.nav-section-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  padding: 0 0.75rem;
+  margin-bottom: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.8rem;
+  font-weight: 450;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s var(--transition-spring);
+  position: relative;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: rgba(120, 90, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background: var(--accent-purple);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.nav-item.active .nav-icon {
+  opacity: 0.9;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(120, 90, 255, 0.15);
+  color: var(--accent-purple);
+}
+
+.sidebar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sidebar-footer-text {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT AREA
+   ═══════════════════════════════════════════════ */
+.main-content {
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  max-height: calc(100dvh - 4rem);
+}
+
+/* TOPBAR */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.topbar-left h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--text-primary);
+}
+
+.topbar-left p {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin-top: 0.25rem;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cmd-k-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.3s var(--transition-spring);
+}
+
+.cmd-k-hint:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-hairline);
+  color: var(--text-secondary);
+}
+
+.kbd {
+  font-family: 'Geist', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   BENTO GRID — ASYMMETRICAL LAYOUT
+   ═══════════════════════════════════════════════ */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: minmax(0, auto);
+  gap: 1rem;
+}
+
+/* DOUBLE-BEZEL CARD SYSTEM */
+.bento-card {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: all 0.5s var(--transition-spring);
+  animation: cardReveal 0.8s var(--transition-spring) both;
+}
+
+.bento-card:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes cardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) blur(0);
+  }
+}
+
+/* Outer shell */
+.card-shell {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1px;
+}
+
+/* Inner core */
+.card-core {
+  background: var(--bg-card);
+  border-radius: calc(var(--radius-xl) - 1px);
+  padding: 1.5rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-core::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+/* Card spans */
+.card-hero { grid-column: span 8; grid-row: span 2; }
+.card-stats { grid-column: span 4; grid-row: span 1; }
+.card-watch { grid-column: span 4; grid-row: span 1; }
+.card-rules { grid-column: span 6; grid-row: span 2; }
+.card-duplicates { grid-column: span 6; grid-row: span 1; }
+.card-history { grid-column: span 6; grid-row: span 1; }
+.card-arch { grid-column: span 12; grid-row: span 1; }
+
+/* Stagger animation delays */
+.bento-card:nth-child(1) { animation-delay: 0.05s; }
+.bento-card:nth-child(2) { animation-delay: 0.1s; }
+.bento-card:nth-child(3) { animation-delay: 0.15s; }
+.bento-card:nth-child(4) { animation-delay: 0.2s; }
+.bento-card:nth-child(5) { animation-delay: 0.25s; }
+.bento-card:nth-child(6) { animation-delay: 0.3s; }
+.bento-card:nth-child(7) { animation-delay: 0.35s; }
+
+/* ═══════════════════════════════════════════════
+   CARD CONTENT STYLES
+   ═══════════════════════════════════════════════ */
+.card-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: 1rem;
+  width: fit-content;
+}
+
+.card-eyebrow .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.card-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.card-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* HERO CARD — FILE ORGANIZATION PREVIEW */
+.hero-visual {
+  flex: 1;
+  margin-top: 1.25rem;
+  position: relative;
+  min-height: 240px;
+}
+
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.875rem;
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  transition: all 0.3s var(--transition-spring);
+  animation: fileSlideIn 0.6s var(--transition-spring) both;
+}
+
+.file-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-subtle);
+}
+
+@keyframes fileSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.file-row:nth-child(1) { animation-delay: 0.4s; }
+.file-row:nth-child(2) { animation-delay: 0.5s; }
+.file-row:nth-child(3) { animation-delay: 0.6s; }
+.file-row:nth-child(4) { animation-delay: 0.7s; }
+.file-row:nth-child(5) { animation-delay: 0.8s; }
+.file-row:nth-child(6) { animation-delay: 0.9s; }
+
+.file-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.file-icon.img { background: rgba(251, 113, 133, 0.12); color: var(--accent-rose); }
+.file-icon.doc { background: rgba(56, 189, 248, 0.12); color: var(--accent-sky); }
+.file-icon.audio { background: rgba(251, 191, 36, 0.12); color: var(--accent-amber); }
+.file-icon.video { background: rgba(120, 90, 255, 0.12); color: var(--accent-purple); }
+.file-icon.archive { background: rgba(52, 211, 153, 0.12); color: var(--accent-emerald); }
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-meta {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  margin-top: 0.1rem;
+}
+
+.file-arrow {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.3s var(--transition-spring);
+}
+
+.file-row:hover .file-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.file-destination {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.file-destination.img { background: rgba(251, 113, 133, 0.08); color: var(--accent-rose); }
+.file-destination.doc { background: rgba(56, 189, 248, 0.08); color: var(--accent-sky); }
+.file-destination.audio { background: rgba(251, 191, 36, 0.08); color: var(--accent-amber); }
+.file-destination.video { background: rgba(120, 90, 255, 0.08); color: var(--accent-purple); }
+.file-destination.archive { background: rgba(52, 211, 153, 0.08); color: var(--accent-emerald); }
+
+/* STATS CARD */
+.stat-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-top: auto;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin-top: 0.35rem;
+}
+
+.stat-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1.2s var(--transition-spring);
+  animation: barGrow 1.5s var(--transition-spring) 0.5s both;
+}
+
+@keyframes barGrow {
+  0% { width: 0; }
+}
+
+.stat-bar-fill.purple { background: linear-gradient(90deg, var(--accent-purple), #9B7AFF); }
+.stat-bar-fill.emerald { background: linear-gradient(90deg, var(--accent-emerald), #6EE7B7); }
+.stat-bar-fill.amber { background: linear-gradient(90deg, var(--accent-amber), #FDE68A); }
+.stat-bar-fill.rose { background: linear-gradient(90deg, var(--accent-rose), #FDA4AF); }
+
+/* WATCH CARD — REAL-TIME MONITORING */
+.watch-activity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.watch-event {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  animation: eventFade 0.4s var(--transition-spring) both;
+}
+
+@keyframes eventFade {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.watch-event:last-child { border-bottom: none; }
+
+.watch-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.watch-dot.green { background: var(--accent-emerald); box-shadow: 0 0 6px rgba(52, 211, 153, 0.4); }
+.watch-dot.purple { background: var(--accent-purple); box-shadow: 0 0 6px rgba(120, 90, 255, 0.4); }
+
+.watch-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.watch-time {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* RULE BUILDER CARD — NODE GRAPH */
+.rule-canvas {
+  flex: 1;
+  margin-top: 1rem;
+  position: relative;
+  min-height: 200px;
+}
+
+.rule-node {
+  position: absolute;
+  padding: 0.6rem 0.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.3s var(--transition-spring);
+  white-space: nowrap;
+}
+
+.rule-node:hover {
+  transform: scale(1.04);
+  z-index: 10;
+}
+
+.rule-node.condition {
+  background: rgba(120, 90, 255, 0.06);
+  border-color: rgba(120, 90, 255, 0.2);
+  color: var(--accent-purple);
+}
+
+.rule-node.action {
+  background: rgba(52, 211, 153, 0.06);
+  border-color: rgba(52, 211, 153, 0.2);
+  color: var(--accent-emerald);
+}
+
+.rule-node.trigger {
+  background: rgba(251, 191, 36, 0.06);
+  border-color: rgba(251, 191, 36, 0.2);
+  color: var(--accent-amber);
+}
+
+.rule-connector {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  transform-origin: left center;
+}
+
+/* DUPLICATES CARD */
+.dupe-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.dupe-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.3s var(--transition-spring);
+}
+
+.dupe-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dupe-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  transition: all 0.2s var(--transition-spring);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dupe-check.checked {
+  background: var(--accent-purple);
+  border-color: var(--accent-purple);
+}
+
+.dupe-check.checked::after {
+  content: '';
+  width: 6px;
+  height: 3px;
+  border-left: 1.5px solid white;
+  border-bottom: 1.5px solid white;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.dupe-filename {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.dupe-size {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* HISTORY CARD */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s var(--transition-spring);
+}
+
+.history-entry:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.history-action {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.history-action.move { background: rgba(56, 189, 248, 0.1); color: var(--accent-sky); }
+.history-action.rename { background: rgba(251, 191, 36, 0.1); color: var(--accent-amber); }
+.history-action.delete { background: rgba(251, 113, 133, 0.1); color: var(--accent-rose); }
+
+.history-detail {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-undo {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--accent-purple);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s var(--transition-spring);
+  flex-shrink: 0;
+}
+
+.history-entry:hover .history-undo {
+  opacity: 1;
+}
+
+/* ARCHITECTURE CARD */
+.arch-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.arch-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.arch-node-box {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+  transition: all 0.3s var(--transition-spring);
+}
+
+.arch-node-box:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-hairline);
+  transform: translateY(-2px);
+}
+
+.arch-node-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.arch-node-sub {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  margin-top: 0.2rem;
+}
+
+.arch-arrow {
+  width: 40px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+  flex-shrink: 0;
+  position: relative;
+}
+
+.arch-arrow::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid rgba(255,255,255,0.15);
+  border-top: 1px solid rgba(255,255,255,0.15);
+  transform: rotate(45deg);
+}
+
+/* ═══════════════════════════════════════════════
+   CTA BUTTON — ISLAND ARCHITECTURE
+   ═══════════════════════════════════════════════ */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: var(--accent-purple);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.3s var(--transition-spring);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: scale(0.97);
+  box-shadow: 0 4px 20px rgba(120, 90, 255, 0.3);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
+}
+
+.btn-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s var(--transition-spring);
+}
+
+.btn-primary:hover .btn-icon {
+  transform: translate(1px, -1px) scale(1.05);
+}
+
+/* ═══════════════════════════════════════════════
+   PROGRESS BAR — LIVE OPERATION
+   ═══════════════════════════════════════════════ */
+.progress-container {
+  margin-top: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+}
+
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.progress-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.progress-percent {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-purple);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple), #9B7AFF);
+  border-radius: 999px;
+  width: 67%;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — MOBILE COLLAPSE
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .app-shell {
+    margin: 0;
+    border-radius: 0;
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-hero,
+  .card-stats,
+  .card-watch,
+  .card-rules,
+  .card-duplicates,
+  .card-history,
+  .card-arch {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .arch-flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .arch-arrow {
+    width: 1px;
+    height: 24px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+    margin: 0 auto;
+  }
+
+  .arch-arrow::after {
+    right: -3px;
+    top: auto;
+    bottom: 0;
+    transform: rotate(135deg);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-mesh"></div>
+<div class="noise-overlay"></div>
+
+<div class="app-shell">
+
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">AF</div>
+      <div>
+        <div class="sidebar-title">AFO</div>
+        <div class="sidebar-version">v2.0 Tauri</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Workspace</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        Organize
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+        </svg>
+        Rule Builder
+        <span class="nav-badge">3</span>
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        Duplicates
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        History
+      </div>
+
+      <div class="nav-section-label">Automation</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        Watch
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12,6 12,12 16,14"/>
+        </svg>
+        Schedule
+      </div>
+
+      <div class="nav-section-label">System</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Settings
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-text">Tauri v2 &middot; Rust + React</div>
+    </div>
+  </aside>
+
+  <!-- ═══════ MAIN CONTENT ═══════ -->
+  <main class="main-content">
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>Project Structure</h1>
+        <p>Architecture overview and component map for AFO v2.0</p>
+      </div>
+      <div class="topbar-right">
+        <div class="cmd-k-hint">
+          <span>Quick jump</span>
+          <span class="kbd">Cmd K</span>
+        </div>
+        <button class="btn-primary">
+          Organize Files
+          <span class="btn-icon">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1 9L9 1M9 1H3M9 1v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════ BENTO GRID ═══════ -->
+    <div class="bento-grid">
+
+      <!-- HERO: File Organization Preview -->
+      <div class="bento-card card-hero">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Live Preview
+            </div>
+            <div class="card-title">Organize by Extension</div>
+            <div class="card-subtitle">Drag files or select a directory. AFO detects types and sorts automatically.</div>
+
+            <div class="hero-visual">
+              <div class="file-tree">
+                <div class="file-row">
+                  <div class="file-icon img">IMG</div>
+                  <div class="file-info">
+                    <div class="file-name">DSC_4821.heic</div>
+                    <div class="file-meta">4.2 MB &middot; Modified 2h ago</div>
+                  </div>
+                  <div class="file-arrow">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span class="file-destination img">~/Images/</span>
+                </div>
+                <div class="file-row">
+                  <div class="file-icon doc">DOC</div>
+                  <div class="file-info">
+                    <div class="file-name">quarterly-report-2024.pdf</div>
+                    <div class="file-meta">1.8 MB &middot; Modified 5h ago</div>
+                  </div>
+                  <div class="file-arrow">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span class="file-destination doc">~/Documents/</span>
+                </div>
+                <div class="file-row">
+                  <div class="file-icon audio">MP3</div>
+                  <div class="file-info">
+                    <div class="file-name">ambient-session-03.flac</div>
+                    <div class="file-meta">28.7 MB &middot; Modified 1d ago</div>
+                  </div>
+                  <div class="file-arrow">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span class="file-destination audio">~/Music/</span>
+                </div>
+                <div class="file-row">
+                  <div class="file-icon video">MP4</div>
+                  <div class="file-info">
+                    <div class="file-name">screen-recording-final.mov</div>
+                    <div class="file-meta">342 MB &middot; Modified 3d ago</div>
+                  </div>
+                  <div class="file-arrow">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span class="file-destination video">~/Videos/</span>
+                </div>
+                <div class="file-row">
+                  <div class="file-icon archive">ZIP</div>
+                  <div class="file-info">
+                    <div class="file-name">project-assets-v2.zip</div>
+                    <div class="file-meta">156 MB &middot; Modified 5d ago</div>
+                  </div>
+                  <div class="file-arrow">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span class="file-destination archive">~/Archives/</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="progress-container">
+              <div class="progress-header">
+                <span class="progress-label">Organizing 247 files...</span>
+                <span class="progress-percent">67%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS: Files Scanned -->
+      <div class="bento-card card-stats">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Session
+            </div>
+            <div class="stat-value">2,847</div>
+            <div class="stat-label">Files scanned across 12 directories</div>
+            <div class="stat-bar">
+              <div class="stat-bar-fill purple" style="width: 78%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WATCH: Real-Time Folder Monitoring -->
+      <div class="bento-card card-watch">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Watching
+            </div>
+            <div class="card-title">Real-Time Monitor</div>
+            <div class="card-subtitle">3 directories active</div>
+
+            <div class="watch-activity">
+              <div class="watch-event">
+                <div class="watch-dot green"></div>
+                <div class="watch-text">New file detected: screenshot.png</div>
+                <div class="watch-time">2s ago</div>
+              </div>
+              <div class="watch-event">
+                <div class="watch-dot purple"></div>
+                <div class="watch-text">Rule applied: "Images" &rarr; ~/Photos/</div>
+                <div class="watch-time">5s ago</div>
+              </div>
+              <div class="watch-event">
+                <div class="watch-dot green"></div>
+                <div class="watch-text">New file detected: notes.md</div>
+                <div class="watch-time">12s ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RULE BUILDER: Node-Based Visual Editor -->
+      <div class="bento-card card-rules">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Rule Builder
+            </div>
+            <div class="card-title">Visual Rule Editor</div>
+            <div class="card-subtitle">Connect conditions to actions. AND logic, sequential execution.</div>
+
+            <div class="rule-canvas">
+              <div class="rule-node trigger" style="top: 10px; left: 0;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline; vertical-align:-1px; margin-right:4px;"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/></svg>
+                File Created
+              </div>
+              <div class="rule-node condition" style="top: 10px; left: 140px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline; vertical-align:-1px; margin-right:4px;"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/></svg>
+                Extension = .heic
+              </div>
+              <div class="rule-node condition" style="top: 60px; left: 140px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline; vertical-align:-1px; margin-right:4px;"><rect x="1" y="1" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/></svg>
+                Size &gt; 1 MB
+              </div>
+              <div class="rule-node action" style="top: 10px; left: 320px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline; vertical-align:-1px; margin-right:4px;"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Move to ~/Photos/
+              </div>
+              <div class="rule-node action" style="top: 60px; left: 320px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline; vertical-align:-1px; margin-right:4px;"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Rename: {date}_{name}
+              </div>
+
+              <!-- Connectors -->
+              <div class="rule-connector" style="top: 22px; left: 108px; width: 32px;"></div>
+              <div class="rule-connector" style="top: 72px; left: 108px; width: 32px;"></div>
+              <div class="rule-connector" style="top: 22px; left: 258px; width: 62px;"></div>
+              <div class="rule-connector" style="top: 72px; left: 258px; width: 62px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DUPLICATES -->
+      <div class="bento-card card-duplicates">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Duplicates
+            </div>
+            <div class="card-title">23 Duplicate Groups</div>
+            <div class="card-subtitle">842 MB recoverable. blake3 content hash.</div>
+
+            <div class="dupe-group">
+              <div class="dupe-item">
+                <div class="dupe-check checked"></div>
+                <div class="dupe-filename">vacation-photo.jpg</div>
+                <div class="dupe-size">4.8 MB</div>
+              </div>
+              <div class="dupe-item">
+                <div class="dupe-check checked"></div>
+                <div class="dupe-filename">vacation-photo (copy).jpg</div>
+                <div class="dupe-size">4.8 MB</div>
+              </div>
+              <div class="dupe-item">
+                <div class="dupe-check"></div>
+                <div class="dupe-filename">presentation-v3.pptx</div>
+                <div class="dupe-size">12.1 MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="bento-card card-history">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Undo / Redo
+            </div>
+            <div class="card-title">Operation History</div>
+            <div class="card-subtitle">SQLite journal. Every operation is reversible.</div>
+
+            <div class="history-list">
+              <div class="history-entry">
+                <span class="history-action move">Move</span>
+                <span class="history-detail">DSC_4821.heic &rarr; ~/Images/2024/</span>
+                <span class="history-undo">Undo</span>
+              </div>
+              <div class="history-entry">
+                <span class="history-action rename">Rename</span>
+                <span class="history-detail">IMG_001.jpg &rarr; 2024-03-15_camera.jpg</span>
+                <span class="history-undo">Undo</span>
+              </div>
+              <div class="history-entry">
+                <span class="history-action delete">Quarantine</span>
+                <span class="history-detail">vacation-photo (copy).jpg &rarr; ~/.local/share/afo/quarantine/</span>
+                <span class="history-undo">Undo</span>
+              </div>
+              <div class="history-entry">
+                <span class="history-action move">Move</span>
+                <span class="history-detail">quarterly-report.pdf &rarr; ~/Documents/Reports/</span>
+                <span class="history-undo">Undo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARCHITECTURE FLOW -->
+      <div class="bento-card card-arch">
+        <div class="card-shell">
+          <div class="card-core">
+            <div class="card-eyebrow">
+              <span class="dot"></span>
+              Architecture
+            </div>
+            <div class="card-title">Data Flow</div>
+            <div class="card-subtitle">From filesystem event to animated UI update. Rust handles the heavy lifting, the webview handles the polish.</div>
+
+            <div class="arch-flow">
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">notify</div>
+                  <div class="arch-node-sub">Filesystem event</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">watcher.rs</div>
+                  <div class="arch-node-sub">Debounce 300ms</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">rule_engine.rs</div>
+                  <div class="arch-node-sub">Evaluate conditions</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">organizer.rs</div>
+                  <div class="arch-node-sub">Move / Copy / Rename</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">journal.rs</div>
+                  <div class="arch-node-sub">SQLite undo log</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">Tauri IPC</div>
+                  <div class="arch-node-sub">Event &rarr; Webview</div>
+                </div>
+              </div>
+              <div class="arch-arrow"></div>
+              <div class="arch-node">
+                <div class="arch-node-box">
+                  <div class="arch-node-label">React UI</div>
+                  <div class="arch-node-sub">Animated update</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /bento-grid -->
+
+  </main>
+
+</div><!-- /app-shell -->
+
+<script>
+// Magnetic button hover — scale on mousemove
+document.querySelectorAll('.btn-primary').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const rect = btn.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    btn.style.transform = `scale(0.97) translate(${x * 4}px, ${y * 4}px)`;
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = '';
+  });
+});
+
+// Dupe check toggle
+document.querySelectorAll('.dupe-check').forEach(check => {
+  check.addEventListener('click', () => check.classList.toggle('checked'));
+});
+
+// Nav item active state
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
