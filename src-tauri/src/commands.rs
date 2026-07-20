@@ -6,7 +6,7 @@ use crate::core::rule_engine;
 use crate::core::scheduler;
 use crate::core::watcher;
 use tauri::Emitter;
-use tracing::{info, warn, instrument};
+use tracing::{info, instrument, warn};
 
 #[derive(Clone, serde::Serialize)]
 pub struct ProgressEvent {
@@ -61,20 +61,33 @@ pub async fn organize_by_extension(
                 Ok(()) => result.moved += 1,
                 Err(e) => {
                     warn!(error = %e, file = %file.name, "Failed to move file");
-                    result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                    result
+                        .errors
+                        .push(format!("Failed to move {}: {}", file.name, e));
                 }
             }
         }
 
-        let _ = app.emit("afo://progress", ProgressEvent {
-            current: i + 1,
-            total: files.len(),
-            file: file.name.clone(),
-            status: if dry_run { "preview".to_string() } else { "moved".to_string() },
-        });
+        let _ = app.emit(
+            "afo://progress",
+            ProgressEvent {
+                current: i + 1,
+                total: files.len(),
+                file: file.name.clone(),
+                status: if dry_run {
+                    "preview".to_string()
+                } else {
+                    "moved".to_string()
+                },
+            },
+        );
     }
 
-    info!(moved = result.moved, skipped = result.skipped, "Organize complete");
+    info!(
+        moved = result.moved,
+        skipped = result.skipped,
+        "Organize complete"
+    );
     Ok(result)
 }
 
@@ -118,20 +131,33 @@ pub async fn organize_by_date(
                 Ok(()) => result.moved += 1,
                 Err(e) => {
                     warn!(error = %e, file = %file.name, "Failed to move file");
-                    result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                    result
+                        .errors
+                        .push(format!("Failed to move {}: {}", file.name, e));
                 }
             }
         }
 
-        let _ = app.emit("afo://progress", ProgressEvent {
-            current: i + 1,
-            total: files.len(),
-            file: file.name.clone(),
-            status: if dry_run { "preview".to_string() } else { "moved".to_string() },
-        });
+        let _ = app.emit(
+            "afo://progress",
+            ProgressEvent {
+                current: i + 1,
+                total: files.len(),
+                file: file.name.clone(),
+                status: if dry_run {
+                    "preview".to_string()
+                } else {
+                    "moved".to_string()
+                },
+            },
+        );
     }
 
-    info!(moved = result.moved, skipped = result.skipped, "Organize by date complete");
+    info!(
+        moved = result.moved,
+        skipped = result.skipped,
+        "Organize by date complete"
+    );
     Ok(result)
 }
 
@@ -173,18 +199,27 @@ pub async fn batch_rename(
             let target = organizer::unique_path(&new_path);
             match std::fs::rename(&file.path, &target) {
                 Ok(()) => result.moved += 1,
-                Err(e) => result.errors.push(format!("Failed to rename {}: {}", file.name, e)),
+                Err(e) => result
+                    .errors
+                    .push(format!("Failed to rename {}: {}", file.name, e)),
             }
         }
 
         counter += 1;
 
-        let _ = app.emit("afo://progress", ProgressEvent {
-            current: i + 1,
-            total: files.len(),
-            file: file.name.clone(),
-            status: if dry_run { "preview".to_string() } else { "renamed".to_string() },
-        });
+        let _ = app.emit(
+            "afo://progress",
+            ProgressEvent {
+                current: i + 1,
+                total: files.len(),
+                file: file.name.clone(),
+                status: if dry_run {
+                    "preview".to_string()
+                } else {
+                    "renamed".to_string()
+                },
+            },
+        );
     }
 
     Ok(result)
@@ -201,10 +236,7 @@ pub async fn save_rules(rules: Vec<rule_engine::Rule>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn apply_rules(
-    path: String,
-    dry_run: bool,
-) -> Result<organizer::OrganizeResult, String> {
+pub async fn apply_rules(path: String, dry_run: bool) -> Result<organizer::OrganizeResult, String> {
     rule_engine::apply_rules(&path, dry_run).map_err(|e| e.to_string())
 }
 

@@ -66,7 +66,8 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
         watched: HashMap::new(),
     };
 
-    STATE.set(Mutex::new(state))
+    STATE
+        .set(Mutex::new(state))
         .map_err(|_| "Watcher already initialized")?;
 
     Ok(())
@@ -79,7 +80,9 @@ pub fn start_watching(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     with_state(|state| {
-        state.watcher.watch(&path, RecursiveMode::Recursive)
+        state
+            .watcher
+            .watch(&path, RecursiveMode::Recursive)
             .map_err(|e| e.to_string())?;
         state.watched.insert(dir.to_string(), true);
         Ok(())
@@ -92,8 +95,7 @@ pub fn stop_watching(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     let path = PathBuf::from(dir);
 
     with_state(|state| {
-        state.watcher.unwatch(&path)
-            .map_err(|e| e.to_string())?;
+        state.watcher.unwatch(&path).map_err(|e| e.to_string())?;
         state.watched.insert(dir.to_string(), false);
         Ok(())
     })?;

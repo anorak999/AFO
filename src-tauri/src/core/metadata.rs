@@ -66,8 +66,7 @@ fn extract_exif(path: &Path) -> Option<ExifData> {
     Some(ExifData {
         camera_make: get_field(Tag::Make),
         camera_model: get_field(Tag::Model),
-        date_taken: get_field(Tag::DateTimeOriginal)
-            .or_else(|| get_field(Tag::DateTime)),
+        date_taken: get_field(Tag::DateTimeOriginal).or_else(|| get_field(Tag::DateTime)),
         gps,
         exposure: get_field(Tag::ExposureTime),
     })

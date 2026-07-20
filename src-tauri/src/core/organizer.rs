@@ -29,12 +29,48 @@ pub struct CategoryConfig {
 impl Default for CategoryConfig {
     fn default() -> Self {
         let mut categories = HashMap::new();
-        categories.insert("images".into(), vec!["jpg","jpeg","png","gif","bmp","svg","webp","heic"].into_iter().map(String::from).collect());
-        categories.insert("documents".into(), vec!["pdf","doc","docx","txt","rtf","odt"].into_iter().map(String::from).collect());
-        categories.insert("audio".into(), vec!["mp3","wav","flac","aac","ogg","m4a"].into_iter().map(String::from).collect());
-        categories.insert("video".into(), vec!["mp4","mkv","avi","mov","wmv","flv"].into_iter().map(String::from).collect());
-        categories.insert("archives".into(), vec!["zip","tar","gz","rar","7z"].into_iter().map(String::from).collect());
-        categories.insert("code".into(), vec!["rs","py","js","ts","go","c","cpp","h"].into_iter().map(String::from).collect());
+        categories.insert(
+            "images".into(),
+            vec!["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp", "heic"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
+        categories.insert(
+            "documents".into(),
+            vec!["pdf", "doc", "docx", "txt", "rtf", "odt"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
+        categories.insert(
+            "audio".into(),
+            vec!["mp3", "wav", "flac", "aac", "ogg", "m4a"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
+        categories.insert(
+            "video".into(),
+            vec!["mp4", "mkv", "avi", "mov", "wmv", "flv"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
+        categories.insert(
+            "archives".into(),
+            vec!["zip", "tar", "gz", "rar", "7z"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
+        categories.insert(
+            "code".into(),
+            vec!["rs", "py", "js", "ts", "go", "c", "cpp", "h"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        );
         Self { categories }
     }
 }
@@ -42,41 +78,35 @@ impl Default for CategoryConfig {
 impl CategoryConfig {
     /// Load from ~/.config/afo/config.json, falling back to defaults
     pub fn load() -> Self {
-        let config_path = dirs::config_dir()
-            .map(|p| p.join("afo").join("config.json"));
+        let config_path = dirs::config_dir().map(|p| p.join("afo").join("config.json"));
 
-        match config_path {
-            Some(path) if path.exists() => {
-                match std::fs::read_to_string(&path) {
-                    Ok(content) => {
-                        // Try to extract just the categories field
-                        #[derive(Deserialize)]
-                        struct ConfigFile {
-                            #[serde(default)]
-                            categories: Option<HashMap<String, Vec<String>>>,
-                        }
-                        match serde_json::from_str::<ConfigFile>(&content) {
-                            Ok(cfg) => {
-                                if let Some(cats) = cfg.categories {
-                                    return Self { categories: cats };
-                                }
-                            }
-                            Err(_) => {} // fall through to defaults
-                        }
-                        Self::default()
+        if let Some(path) = config_path {
+            if path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    #[derive(Deserialize)]
+                    struct ConfigFile {
+                        #[serde(default)]
+                        categories: Option<HashMap<String, Vec<String>>>,
                     }
-                    Err(_) => Self::default(),
+                    if let Ok(cfg) = serde_json::from_str::<ConfigFile>(&content) {
+                        if let Some(cats) = cfg.categories {
+                            return Self { categories: cats };
+                        }
+                    }
                 }
             }
-            _ => Self::default(),
         }
+        Self::default()
     }
 
     /// Map an extension to its category, or "other"
     pub fn categorize(&self, ext: &str) -> &str {
         let ext_lower = ext.to_lowercase();
         for (category, extensions) in &self.categories {
-            if extensions.iter().any(|e| e.eq_ignore_ascii_case(&ext_lower)) {
+            if extensions
+                .iter()
+                .any(|e| e.eq_ignore_ascii_case(&ext_lower))
+            {
                 return category;
             }
         }
@@ -90,7 +120,10 @@ pub(crate) fn unique_path(target: &Path) -> PathBuf {
         return target.to_path_buf();
     }
     let stem = target.file_stem().unwrap_or_default().to_string_lossy();
-    let ext = target.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    let ext = target
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
     let parent = target.parent().unwrap_or(Path::new("."));
     for i in 1u32.. {
         let candidate = parent.join(format!("{}_{}{}", stem, i, ext));
@@ -168,7 +201,9 @@ pub async fn organize_by_extension(
         let target_file = unique_path(&target_dir.join(&file.name));
         match std::fs::rename(&file.path, &target_file) {
             Ok(()) => result.moved += 1,
-            Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+            Err(e) => result
+                .errors
+                .push(format!("Failed to move {}: {}", file.name, e)),
         }
     }
 
@@ -213,7 +248,9 @@ pub async fn organize_by_date(
         let target_file = unique_path(&target_dir.join(&file.name));
         match std::fs::rename(&file.path, &target_file) {
             Ok(()) => result.moved += 1,
-            Err(e) => result.errors.push(format!("Failed to move {}: {}", file.name, e)),
+            Err(e) => result
+                .errors
+                .push(format!("Failed to move {}: {}", file.name, e)),
         }
     }
 
@@ -259,7 +296,9 @@ pub async fn batch_rename(
         let target = unique_path(&new_path);
         match std::fs::rename(&file.path, &target) {
             Ok(()) => result.moved += 1,
-            Err(e) => result.errors.push(format!("Failed to rename {}: {}", file.name, e)),
+            Err(e) => result
+                .errors
+                .push(format!("Failed to rename {}: {}", file.name, e)),
         }
 
         counter += 1;

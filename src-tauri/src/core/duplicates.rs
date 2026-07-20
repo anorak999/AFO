@@ -149,7 +149,7 @@ pub fn scan_duplicates(
         })
         .collect();
 
-    result.sort_by(|a, b| b.total_size.cmp(&a.total_size));
+    result.sort_by_key(|b| std::cmp::Reverse(b.total_size));
     Ok(result)
 }
 

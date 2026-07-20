@@ -60,7 +60,8 @@ fn save_schedules(schedules: &[Schedule]) -> Result<(), Box<dyn std::error::Erro
 pub fn init_scheduler() -> Result<(), Box<dyn std::error::Error>> {
     let schedules = load_schedules();
     let state = SchedulerState { schedules };
-    STATE.set(Mutex::new(state))
+    STATE
+        .set(Mutex::new(state))
         .map_err(|_| "Scheduler already initialized")?;
     Ok(())
 }
@@ -140,7 +141,10 @@ pub async fn run_now(id: &str) -> Result<(), Box<dyn std::error::Error>> {
             .lock()
             .map_err(|e| e.to_string())?;
 
-        let schedule = state.schedules.iter().find(|s| s.id == id)
+        let schedule = state
+            .schedules
+            .iter()
+            .find(|s| s.id == id)
             .ok_or_else(|| format!("Schedule {} not found", id))?;
 
         schedule.action.clone()

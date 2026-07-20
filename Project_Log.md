@@ -408,3 +408,33 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 ### Build Verification
 - `cargo check` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2025-07-21 — Phase 1 & Phase 2 Complete
+
+### Phase 1: Scaffold & Dev Environment — COMPLETED
+- All items marked [x] in TODO.md
+- ESLint: `eslint.config.js` with flat config (ESLint v9+), TypeScript, React Hooks plugins
+- Prettier: `.prettierrc.json` + `.prettierignore`
+- Rustfmt: `src-tauri/.rustfmt.toml` (edition 2021, max_width 100)
+- Clippy: `src-tauri/clippy.toml` (msrv 1.70)
+- Fixed clippy warnings:
+  - `organizer.rs`: converted match to if-let for single_match lint
+  - `duplicates.rs`: replaced sort_by with sort_by_key for unnecessary_sort_by lint
+- `cargo fmt` — ✅ Clean
+- `cargo clippy -- -D warnings` — ✅ Clean
+
+### Phase 2: Core Organization Engine — COMPLETED
+- All items marked [x] in TODO.md
+- Live progress events verified:
+  - Rust: `commands.rs` emits `afo://progress` with ProgressEvent (current, total, file, status)
+  - Frontend: `OrganizePanel.tsx` listens via `@tauri-apps/api/event` and shows progress bar
+  - Progress bar UI: animated, shows current file and count
+
+### Commits
+- `5978974` docs: update TODO.md with completed items
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `cargo fmt --check` — ✅ Clean
+- `cargo clippy -- -D warnings` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean

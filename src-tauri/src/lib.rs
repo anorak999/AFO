@@ -13,7 +13,9 @@ pub fn run() {
     }
 
     let file_appender = tracing_appender::rolling::daily(
-        log_path.parent().unwrap_or_else(|| std::path::Path::new(".")),
+        log_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new(".")),
         "afo.log",
     );
 

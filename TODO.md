@@ -13,7 +13,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Verify dev loop: `cargo tauri dev` hot-reloads both Rust and frontend
 - [x] Define project structure per PRD §5 — create empty module files in `src-tauri/core/`
 - [x] Scaffold frontend directory tree: `components/Sidebar/`, `OrganizePanel/`, `RuleBuilder/`, `DuplicatesPanel/`, `HistoryPanel/`, `CommandPalette/`, `SettingsPanel/`, `lib/tauri-bridge.ts`
-- [ ] Configure ESLint, Prettier, rustfmt, clippy
+- [x] Configure ESLint, Prettier, rustfmt, clippy
 - [x] Write basic `tauri.conf.json` — window title "AFO", dark theme, 1200x800 default size
 - [x] Create `capabilities/default.json` for Tauri v2 permissions
 - [x] Smoke test: app window opens, shows placeholder "AFO v2.0" text
@@ -31,7 +31,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Tauri IPC commands in `src-tauri/commands.rs`: `organize_by_extension`, `organize_by_date`, `batch_rename`, `scan_directory`
 - [x] Frontend `src/lib/tauri-bridge.ts` — typed wrappers for each IPC command using `invoke()`
 - [x] Frontend `OrganizePanel` — directory picker, mode selector (extension/date/rename), pattern input for rename, dry-run preview table, "Execute" button
-- [ ] Live progress events: Rust emits `afo://progress` events during batch ops, frontend `listen()` updates progress bar
+- [x] Live progress events: Rust emits `afo://progress` events during batch ops, frontend `listen()` updates progress bar
 - [x] Dry-run mode for all operations — show what would happen before committing
 
 ---
