@@ -1,57 +1,102 @@
-/* Theme toggle — adapted from a Uiverse.io community snippet (by cuzpq).
-   Scoped to .theme-checkbox only; does not affect the shared <Toggle>
-   component used elsewhere in the app (Recursive, Auto-Quarantine, etc).
-   Sized down via --toggle-size so it fits a single CardRow instead of
-   dominating it. */
+/* Day/night theme toggle — adapted from Uiverse.io by JustCode14.
+   Scoped to .theme-switch only; does not affect the shared <Toggle>
+   component used elsewhere in the app.
+   Mapping: checked = dark mode (night), unchecked = light mode (day). */
 
-.theme-checkbox {
-  --toggle-size: 10px; /* was 16px in the original snippet — scaled to fit a settings row */
-  /* distinct hues per half instead of near-white/near-black, so the
-     track never blends into a light OR a dark card background */
-  --sun: #F5C451;
-  --moon: #3A4A6B;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  width: 6.25em;
-  height: 3.125em;
-  background: linear-gradient(to right, var(--sun) 50%, var(--moon) 50%) no-repeat;
-  background-size: 205%;
-  background-position: 0;
-  transition: 0.4s;
-  border-radius: 99em;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+/* ── Switch container ─────────────────────────────────────────────── */
+.theme-switch {
+  font-size: 17px;
   position: relative;
-  cursor: pointer;
-  font-size: var(--toggle-size);
+  display: inline-block;
+  width: 4em;
+  height: 2.2em;
+  border-radius: 30px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
+  cursor: pointer;
 }
 
-.theme-checkbox:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.theme-checkbox::before {
-  content: "\2600"; /* ☀ sun glyph; swaps to moon when checked */
-  width: 2.25em;
-  height: 2.25em;
+/* Hide native checkbox */
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
   position: absolute;
-  top: 0.438em;
-  left: 0.438em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1em;
-  line-height: 1;
-  background: #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transition: 0.4s;
 }
 
-.theme-checkbox:checked::before {
-  content: "\1F319"; /* 🌙 moon glyph */
-  left: calc(100% - 2.25em - 0.438em);
+/* ── Slider (the track) ──────────────────────────────────────────── */
+.theme-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 30px;
+  overflow: hidden;
+  transition: background-color 0.4s;
+  /* Default (unchecked) = light mode = blue sky */
+  background-color: #00a6ff;
+}
+
+/* ── Knob ─────────────────────────────────────────────────────────── */
+.theme-slider::before {
+  content: "";
+  position: absolute;
+  height: 1.2em;
+  width: 1.2em;
+  border-radius: 20px;
+  left: 0.5em;
+  bottom: 0.5em;
+  transition: 0.4s;
+  transition-timing-function: cubic-bezier(0.81, -0.04, 0.38, 1.5);
+  /* Sun glow (light mode) */
+  box-shadow: inset 15px -4px 0px 15px #ffcf48;
+}
+
+/* ── Stars (visible only in dark mode) ────────────────────────────── */
+.theme-star {
+  background-color: #fff;
+  border-radius: 50%;
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  transition: opacity 0.4s;
+  /* Visible by default (light mode — but stars hidden) */
+  opacity: 0;
+}
+
+.theme-star_1 { left: 2.5em; top: 0.5em; }
+.theme-star_2 { left: 2.2em; top: 1.2em; }
+.theme-star_3 { left: 3em;   top: 0.9em; }
+
+/* ── Cloud (visible only in light mode) ───────────────────────────── */
+.theme-cloud {
+  width: 3.5em;
+  position: absolute;
+  bottom: -1.4em;
+  left: -1.1em;
+  opacity: 1;
+  transition: opacity 0.4s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CHECKED = DARK MODE (night)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.theme-switch input:checked + .theme-slider {
+  /* Night sky */
+  background-color: #2a2a2a;
+}
+
+.theme-switch input:checked + .theme-slider::before {
+  /* Moon knob — slides right */
+  transform: translateX(1.8em);
+  box-shadow: inset 8px -4px 0px 0px #fff;
+}
+
+/* Stars fade in */
+.theme-switch input:checked ~ .theme-slider .theme-star {
+  opacity: 1;
+}
+
+/* Cloud fades out */
+.theme-switch input:checked ~ .theme-slider .theme-cloud {
+  opacity: 0;
 }
