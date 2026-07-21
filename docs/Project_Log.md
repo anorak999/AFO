@@ -732,3 +732,28 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `src-tauri/src/core/rule_engine.rs` — Regex cache, rules-as-parameter, lazy EXIF extraction
 - `src-tauri/src/core/duplicates.rs` — Size pre-filter before blake3 hashing
 - `src-tauri/src/core/watcher.rs` — Thread-local rules cache with 5s TTL
+
+## 2026-07-21 — v2.5.1: Fix Panel State Loss on Tab Switch
+
+### Problem
+When switching between tabs (Organize, Rule Builder, Duplicates, History, Settings), all local component state was destroyed. Tabs appeared "empty" after executing an operation or navigating away and back.
+
+### Root Cause
+`AnimatePresence mode="wait"` in `App.tsx` unmounted the previous panel before mounting the new one. Every `useState` in the unmounted panel was destroyed. This also triggered redundant Tauri IPC calls (`listRules`, `getHistory`, `listWatchedDirectories`, `listSchedules`) on every re-mount.
+
+### Fix
+Replaced `AnimatePresence` + conditional single-panel render with CSS `display` toggle. All 5 panels are now mounted simultaneously in absolutely-positioned containers. Only the active panel is visible (`display: block`); inactive panels are hidden (`display: none`). No component ever unmounts when switching tabs.
+
+### Changes
+- **`src/App.tsx`**: Removed `framer-motion` import, replaced `AnimatePresence` block with `Object.keys(panels).map()` rendering all panels with CSS visibility toggle
+- **`package.json`**: Version 2.5.0 → 2.5.1
+- **`src-tauri/tauri.conf.json`**: Version 2.5.0 → 2.5.1
+- **`src/components/SettingsPanel/SettingsPanel.tsx`**: Version display → 2.5.1
+- **`src/components/Sidebar/Sidebar.tsx`**: Footer version → 2.5.1
+
+### Commits
+- `f4a59db` fix: preserve panel state on tab switch (v2.5.1)
+
+### Build Verification
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb` — pending
