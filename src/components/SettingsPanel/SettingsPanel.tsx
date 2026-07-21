@@ -8,8 +8,12 @@ import {
   deleteSchedule,
   toggleSchedule,
   runScheduleNow,
+  cloudListProviders,
+  cloudSyncNow,
+  mlSuggestCategory,
   type WatchedDir,
   type Schedule,
+  type CloudProvider,
 } from "../../lib/tauri-bridge";
 import { showToast } from "../Toast";
 
@@ -17,6 +21,8 @@ const SECTIONS = [
   { id: "general", label: "General" },
   { id: "watching", label: "Folder Watching" },
   { id: "scheduling", label: "Schedules" },
+  { id: "cloud", label: "Cloud Sync" },
+  { id: "ml", label: "Smart Categorize" },
   { id: "about", label: "About" },
 ] as const;
 
@@ -55,6 +61,8 @@ export default function SettingsPanel() {
           {activeSection === "general" && <GeneralSection />}
           {activeSection === "watching" && <WatchingSection />}
           {activeSection === "scheduling" && <SchedulingSection />}
+          {activeSection === "cloud" && <CloudSyncSection />}
+          {activeSection === "ml" && <MLSection />}
           {activeSection === "about" && <AboutSection />}
         </div>
       </div>
@@ -472,6 +480,143 @@ function AboutSection() {
           <p>Quarantine: ~/.local/share/afo/quarantine/</p>
           <p>Logs: ~/.local/share/afo/afo.log</p>
         </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function CloudSyncSection() {
+  const [providers, setProviders] = useState<CloudProvider[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const list = await cloudListProviders();
+      setProviders(list);
+    } catch (e) {
+      console.error("Failed to load cloud providers:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function handleSync(path: string) {
+    try {
+      await cloudSyncNow(path);
+      showToast("Cloud sync initiated", "success");
+    } catch (e) {
+      showToast(`${e}`, "info");
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <SectionCard title="Cloud Sync">
+        <p className="text-xs text-white/40 mb-3">
+          Connect cloud storage providers for automatic file synchronization. Coming in a future
+          release.
+        </p>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-white/30">
+            <div className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/60" />
+            Loading...
+          </div>
+        ) : providers.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.01] p-6 text-center">
+            <p className="text-xs text-white/30">No cloud providers configured yet.</p>
+            <p className="mt-1 text-[10px] text-white/20">
+              Dropbox, Google Drive, and OneDrive support coming soon.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {providers.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+              >
+                <div
+                  className={`h-2 w-2 rounded-full ${p.enabled ? "bg-afo-emerald" : "bg-white/20"}`}
+                />
+                <span className="flex-1 truncate text-sm text-white/70">{p.name}</span>
+                <button
+                  onClick={() => handleSync(p.local_path)}
+                  className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  Sync
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+function MLSection() {
+  const [testFile, setTestFile] = useState("");
+  const [suggestion, setSuggestion] = useState("");
+  const [testing, setTesting] = useState(false);
+
+  async function handleTest() {
+    if (!testFile.trim()) return;
+    setTesting(true);
+    setSuggestion("");
+    try {
+      const result = await mlSuggestCategory(testFile.trim());
+      setSuggestion(result);
+    } catch (e) {
+      showToast(`${e}`, "error");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <SectionCard title="Smart Categorization (ML)">
+        <p className="text-xs text-white/40 mb-3">
+          AI-powered file categorization suggestions based on filename analysis. Labeled as
+          "suggestion" in the organize panel — you always confirm before organizing.
+        </p>
+
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.01] p-6">
+          <p className="text-xs text-white/30 mb-3">Try a filename:</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={testFile}
+              onChange={(e) => setTestFile(e.target.value)}
+              placeholder="e.g. vacation_photo.jpg"
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/20 outline-none focus:border-afo-purple/50"
+              onKeyDown={(e) => e.key === "Enter" && handleTest()}
+            />
+            <button
+              onClick={handleTest}
+              disabled={!testFile.trim() || testing}
+              className="shrink-0 rounded-lg bg-afo-purple/20 px-3 py-2 text-xs font-medium text-afo-purple transition-colors hover:bg-afo-purple/30 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {testing ? "..." : "Suggest"}
+            </button>
+          </div>
+          {suggestion && (
+            <div className="mt-3 rounded-lg bg-white/[0.03] px-3 py-2">
+              <span className="text-xs text-white/40">Suggested category: </span>
+              <span className="text-xs font-medium text-afo-purple">{suggestion}</span>
+              <span className="ml-2 text-[10px] text-white/20">(ML suggestion)</span>
+            </div>
+          )}
+        </div>
+
+        <p className="mt-3 text-[10px] text-white/20">
+          Post-launch: TF-IDF filename similarity with labeled training data.
+        </p>
       </SectionCard>
     </div>
   );

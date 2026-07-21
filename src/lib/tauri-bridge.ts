@@ -217,3 +217,26 @@ export async function toggleSchedule(id: string, enabled: boolean): Promise<void
 export async function runScheduleNow(id: string): Promise<void> {
   return invoke("run_schedule_now", { id });
 }
+
+// Cloud sync stubs
+export interface CloudProvider {
+  id: string;
+  name: string;
+  provider_type: string;
+  local_path: string;
+  remote_path: string;
+  enabled: boolean;
+}
+
+export async function cloudListProviders(): Promise<CloudProvider[]> {
+  return invoke<CloudProvider[]>("cloud_list_providers");
+}
+
+export async function cloudSyncNow(path: string): Promise<void> {
+  return invoke("cloud_sync_now", { path });
+}
+
+// ML categorization stub
+export async function mlSuggestCategory(filePath: string): Promise<string> {
+  return invoke<string>("ml_suggest_category", { filePath });
+}

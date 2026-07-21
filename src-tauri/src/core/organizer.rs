@@ -138,7 +138,15 @@ pub(crate) fn unique_path(target: &Path) -> PathBuf {
             return candidate;
         }
     }
-    unreachable!()
+    // Fallback: shouldn't happen in practice, but handle gracefully
+    let fallback = parent.join(format!("{}_{}", stem, std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()));
+    if !fallback.exists() {
+        return fallback;
+    }
+    target.to_path_buf()
 }
 
 pub fn scan_directory(path: &str) -> Result<Vec<FileInfo>, Box<dyn std::error::Error>> {
@@ -151,7 +159,6 @@ pub fn scan_directory(path: &str) -> Result<Vec<FileInfo>, Box<dyn std::error::E
 
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
-        let metadata = entry.metadata()?;
         let name = entry.file_name().to_string_lossy().to_string();
         let path_str = entry.path().to_string_lossy().to_string();
         let extension = entry
@@ -161,12 +168,23 @@ pub fn scan_directory(path: &str) -> Result<Vec<FileInfo>, Box<dyn std::error::E
             .to_string_lossy()
             .to_string();
 
+        // Use symlink_metadata to correctly handle symlinks (follow the link, not the target)
+        let metadata = match std::fs::symlink_metadata(entry.path()) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!(error = %e, file = %name, "Cannot read file metadata, skipping");
+                continue;
+            }
+        };
+
+        let is_symlink = metadata.file_type().is_symlink();
+
         files.push(FileInfo {
             name,
             path: path_str,
             extension,
             size: metadata.len(),
-            is_dir: metadata.is_dir(),
+            is_dir: metadata.is_dir() || is_symlink && std::fs::metadata(entry.path()).map(|m| m.is_dir()).unwrap_or(false),
         });
     }
 

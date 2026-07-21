@@ -1,3 +1,4 @@
+use crate::core::cloud_sync;
 use crate::core::duplicates;
 use crate::core::journal;
 use crate::core::metadata;
@@ -5,8 +6,27 @@ use crate::core::organizer;
 use crate::core::rule_engine;
 use crate::core::scheduler;
 use crate::core::watcher;
+use std::io;
 use tauri::Emitter;
 use tracing::{info, instrument, warn};
+
+/// Check if an IO error is permission denied
+fn is_permission_denied(err: &io::Error) -> bool {
+    err.kind() == io::ErrorKind::PermissionDenied
+}
+
+/// Attempt a file move with one retry after a short delay (helps with Windows file locks)
+fn retry_move(src: &std::path::Path, dst: &std::path::Path) -> io::Result<()> {
+    match std::fs::rename(src, dst) {
+        Ok(()) => Ok(()),
+        Err(e) if is_permission_denied(&e) => {
+            // Retry once after a short delay — helps with Windows file locks
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::fs::rename(src, dst)
+        }
+        Err(e) => Err(e),
+    }
+}
 
 #[derive(Clone, serde::Serialize)]
 pub struct ProgressEvent {
@@ -57,13 +77,22 @@ pub async fn organize_by_extension(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match std::fs::rename(&file.path, &target_file) {
+            match retry_move(
+                std::path::Path::new(&file.path),
+                &target_file,
+            ) {
                 Ok(()) => result.moved += 1,
                 Err(e) => {
-                    warn!(error = %e, file = %file.name, "Failed to move file");
-                    result
-                        .errors
-                        .push(format!("Failed to move {}: {}", file.name, e));
+                    if is_permission_denied(&e) {
+                        warn!(error = %e, file = %file.name, "Permission denied moving file");
+                        result.errors.push(format!(
+                            "Permission denied: {} (try running as administrator)",
+                            file.name
+                        ));
+                    } else {
+                        warn!(error = %e, file = %file.name, "Failed to move file");
+                        result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                    }
                 }
             }
         }
@@ -114,8 +143,23 @@ pub async fn organize_by_date(
             continue;
         }
 
-        let metadata = std::fs::metadata(&file.path).map_err(|e| e.to_string())?;
-        let modified = metadata.modified().map_err(|e| e.to_string())?;
+        // Per-file metadata read — don't abort the whole operation
+        let metadata = match std::fs::metadata(&file.path) {
+            Ok(m) => m,
+            Err(e) => {
+                warn!(error = %e, file = %file.name, "Cannot read metadata");
+                result.errors.push(format!("Cannot read {}: {}", file.name, e));
+                continue;
+            }
+        };
+        let modified = match metadata.modified() {
+            Ok(t) => t,
+            Err(e) => {
+                warn!(error = %e, file = %file.name, "Cannot read modified time");
+                result.errors.push(format!("Cannot read time for {}: {}", file.name, e));
+                continue;
+            }
+        };
         let datetime: chrono::DateTime<chrono::Local> = modified.into();
         let date_folder = datetime.format("%Y/%m").to_string();
         let target_dir = std::path::Path::new(&path).join(&date_folder);
@@ -127,13 +171,22 @@ pub async fn organize_by_date(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match std::fs::rename(&file.path, &target_file) {
+            match retry_move(
+                std::path::Path::new(&file.path),
+                &target_file,
+            ) {
                 Ok(()) => result.moved += 1,
                 Err(e) => {
-                    warn!(error = %e, file = %file.name, "Failed to move file");
-                    result
-                        .errors
-                        .push(format!("Failed to move {}: {}", file.name, e));
+                    if is_permission_denied(&e) {
+                        warn!(error = %e, file = %file.name, "Permission denied moving file");
+                        result.errors.push(format!(
+                            "Permission denied: {} (try running as administrator)",
+                            file.name
+                        ));
+                    } else {
+                        warn!(error = %e, file = %file.name, "Failed to move file");
+                        result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                    }
                 }
             }
         }
@@ -197,11 +250,22 @@ pub async fn batch_rename(
             result.moved += 1;
         } else {
             let target = organizer::unique_path(&new_path);
-            match std::fs::rename(&file.path, &target) {
+            match retry_move(
+                std::path::Path::new(&file.path),
+                &target,
+            ) {
                 Ok(()) => result.moved += 1,
-                Err(e) => result
-                    .errors
-                    .push(format!("Failed to rename {}: {}", file.name, e)),
+                Err(e) => {
+                    if is_permission_denied(&e) {
+                        warn!(error = %e, file = %file.name, "Permission denied renaming file");
+                        result.errors.push(format!(
+                            "Permission denied: {} (try running as administrator)",
+                            file.name
+                        ));
+                    } else {
+                        result.errors.push(format!("Failed to rename {}: {}", file.name, e));
+                    }
+                }
             }
         }
 
@@ -355,4 +419,64 @@ pub async fn run_schedule_now(app: tauri::AppHandle, id: String) -> Result<(), S
     scheduler::run_now(&id, &app)
         .await
         .map_err(|e| e.to_string())
+}
+
+// Cloud sync stubs (post-launch)
+
+#[tauri::command]
+pub async fn cloud_list_providers() -> Result<Vec<cloud_sync::CloudProvider>, String> {
+    cloud_sync::list_providers().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn cloud_sync_now(path: String) -> Result<(), String> {
+    cloud_sync::sync_to_cloud(&path).map_err(|e| e.to_string())
+}
+
+// ML categorization stub (post-launch)
+
+#[tauri::command]
+pub async fn ml_suggest_category(file_path: String) -> Result<String, String> {
+    // Simple TF-IDF-like heuristic: match filename against known category keywords
+    let name = std::path::Path::new(&file_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    let categories: Vec<(&[&str], &str)> = vec![
+        (
+            &["screenshot", "photo", "img", "image", "pic", "wallpaper"],
+            "images",
+        ),
+        (
+            &["invoice", "resume", "report", "contract", "doc", "pdf"],
+            "documents",
+        ),
+        (
+            &["song", "music", "audio", "podcast", "track", "album"],
+            "audio",
+        ),
+        (
+            &["video", "movie", "clip", "tutorial", "stream", "recording"],
+            "video",
+        ),
+        (
+            &["backup", "archive", "zip", "export", "dump"],
+            "archives",
+        ),
+        (
+            &[
+                "main", "index", "app", "config", "test", "lib", "src",
+            ],
+            "code",
+        ),
+    ];
+
+    for (keywords, category) in &categories {
+        if keywords.iter().any(|k| name.contains(k)) {
+            return Ok(category.to_string());
+        }
+    }
+
+    Ok("other".to_string())
 }

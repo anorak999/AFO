@@ -30,6 +30,32 @@
     "targets": "all",
     "icon": [
       "icons/icon.png"
-    ]
+    ],
+    "resources": [],
+    "category": "Utility",
+    "shortDescription": "Advanced File Organizer",
+    "longDescription": "Cross-platform desktop file organization. Rule-based sorting, duplicate detection, batch rename, and metadata-aware organization.",
+    "linux": {
+      "deb": {
+        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "both",
+        "displayLanguageSelector": false
+      },
+      "wix": null
+    },
+    "macOS": {
+      "dmg": {
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 }
+      },
+      "minimumSystemVersion": "10.15"
+    }
   }
 }

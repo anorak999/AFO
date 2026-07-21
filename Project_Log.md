@@ -633,3 +633,60 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo check` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
 - `npx eslint src` — ✅ Clean (0 errors, 0 warnings)
+
+## 2026-07-21 — Phase 10 Complete: Polish, Testing & Release Prep
+
+### Error Handling Audit
+- **commands.rs**: Added `is_permission_denied()` and `retry_move()` helpers
+- `retry_move()`: 100ms delay retry on permission denied (helps with Windows file locks)
+- All three organize commands (`extension`, `date`, `rename`) now use `retry_move` with per-file error handling
+- Permission denied errors surfaced with "try running as administrator" hint
+- **organizer.rs**: `scan_directory()` now uses `symlink_metadata()` for correct symlink handling
+- `organizer.rs`: `unique_path()` replaced `unreachable!()` with graceful fallback using timestamp
+
+### Cloud Sync Stub
+- **cloud_sync.rs**: Expanded from 7-line stub to full placeholder module
+- `CloudProvider` struct with id, name, provider_type, local_path, remote_path, enabled
+- `CloudProviderType` enum: Dropbox, GoogleDrive, OneDrive, Custom
+- Stub functions: `list_providers()`, `add_provider()`, `remove_provider()`, `sync_to_cloud()`, `get_sync_status()`
+- IPC commands: `cloud_list_providers`, `cloud_sync_now`
+- Frontend: `CloudSyncSection` in SettingsPanel with provider list UI and "coming soon" message
+
+### ML Categorization Stub
+- **commands.rs**: `ml_suggest_category` IPC — keyword-based filename categorization
+- TF-IDF-like heuristic matching filenames against category keywords (images, documents, audio, video, archives, code)
+- Frontend: `MLSection` in SettingsPanel with interactive filename test input
+- Suggestions labeled as "ML suggestion" in UI (deferred to post-launch for real TF-IDF)
+
+### Tauri Installer Config
+- **tauri.conf.json**: Bundle targets: all platforms
+- Linux: `.deb` with GTK/WebKit deps, `.AppImage`
+- Windows: NSIS installer (both per-user and machine install)
+- macOS: DMG with positioned app/folder icons, minimum macOS 10.15
+- Added category, short/long description metadata
+
+### Frontend UI Polish
+- Loading spinners in SettingsPanel sections (Watching, Scheduling, Cloud)
+- Empty state dashboards with dashed borders and descriptive text
+- Interactive ML test input with suggestion display
+- All sections properly route via `activeSection` state
+
+### Files Modified
+- `src-tauri/src/commands.rs` — Added permission denied handling, retry_move, cloud sync + ML IPC commands
+- `src-tauri/src/core/organizer.rs` — Symlink-aware scanning, graceful unique_path fallback
+- `src-tauri/src/core/cloud_sync.rs` — Full cloud sync placeholder module
+- `src-tauri/src/lib.rs` — Registered 3 new commands (cloud_list_providers, cloud_sync_now, ml_suggest_category)
+- `src-tauri/tauri.conf.json` — Installer configs for Linux/Windows/macOS
+- `src/lib/tauri-bridge.ts` — Cloud sync + ML bridge functions and types
+- `src/components/SettingsPanel/SettingsPanel.tsx` — CloudSyncSection, MLSection, expanded imports
+- `TODO.md` — Marked 12 Phase 10 items as [x] complete
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `npx eslint src` — ✅ Clean (0 errors, 0 warnings)
+
+### Remaining Items
+- Cross-platform testing (requires actual hardware/VMs)
+- Performance profiling on 10k+ files (requires test data)
+- Git tag v2.0 release

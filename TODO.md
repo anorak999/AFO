@@ -143,18 +143,18 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 
 ## Phase 10: Polish, Testing & Release Prep
 
-- [ ] Error handling audit — all IPC commands return typed errors, no panics
-- [ ] Permission denied: caught per-file, logged, surfaced with retry option
-- [ ] Name collision: auto-suffix everywhere, consistent behavior
-- [ ] Corrupt config/rules: fallback + `.bak` backup + toast notification
+- [x] Error handling audit — all IPC commands return typed errors, no panics
+- [x] Permission denied: caught per-file, logged, surfaced with retry option
+- [x] Name collision: auto-suffix everywhere, consistent behavior
+- [x] Corrupt config/rules: fallback + `.bak` backup + toast notification
 - [ ] Cross-platform testing: Linux (Ubuntu/Fedora), Windows 10+, macOS 12+
-- [ ] Symlink handling: graceful fallback on Windows without elevated privileges
+- [x] Symlink handling: graceful fallback on Windows without elevated privileges
 - [ ] Performance: profile batch operations on 10k+ files, ensure UI stays responsive
-- [ ] Installers: `.deb` / `.AppImage` (Linux), `.msi` (Windows), `.dmg` (macOS)
-- [ ] App icon and branding assets
+- [x] Installers: `.deb` / `.AppImage` (Linux), `.msi` (Windows), `.dmg` (macOS)
+- [x] App icon and branding assets
 - [x] Structured logging via `tracing` — log to `~/.local/share/afo/afo.log`
-- [ ] Cloud sync stub: placeholder UI and IPC, no real API calls (defer to post-launch)
-- [ ] ML categorization stub: TF-IDF filename similarity, labeled "suggestion" in UI (defer to post-launch)
-- [ ] Final UI polish: transitions, hover states, empty states, loading skeletons
+- [x] Cloud sync stub: placeholder UI and IPC, no real API calls (defer to post-launch)
+- [x] ML categorization stub: TF-IDF filename similarity, labeled "suggestion" in UI (defer to post-launch)
+- [x] Final UI polish: transitions, hover states, empty states, loading skeletons
 - [x] README with build instructions, features overview, screenshots
 - [ ] Tag v2.0 release

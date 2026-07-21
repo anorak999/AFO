@@ -84,6 +84,9 @@ pub fn run() {
             commands::delete_schedule_cmd,
             commands::toggle_schedule_cmd,
             commands::run_schedule_now,
+            commands::cloud_list_providers,
+            commands::cloud_sync_now,
+            commands::ml_suggest_category,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
