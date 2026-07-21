@@ -351,6 +351,8 @@ pub async fn toggle_schedule_cmd(id: String, enabled: bool) -> Result<(), String
 }
 
 #[tauri::command]
-pub async fn run_schedule_now(id: String) -> Result<(), String> {
-    scheduler::run_now(&id).await.map_err(|e| e.to_string())
+pub async fn run_schedule_now(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    scheduler::run_now(&id, &app)
+        .await
+        .map_err(|e| e.to_string())
 }

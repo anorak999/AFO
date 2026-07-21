@@ -3,7 +3,13 @@ import {
   watchDirectory,
   unwatchDirectory,
   listWatchedDirectories,
+  createSchedule,
+  listSchedules,
+  deleteSchedule,
+  toggleSchedule,
+  runScheduleNow,
   type WatchedDir,
+  type Schedule,
 } from "../../lib/tauri-bridge";
 import { showToast } from "../Toast";
 
@@ -215,15 +221,228 @@ function WatchingSection() {
 }
 
 function SchedulingSection() {
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCron, setNewCron] = useState("");
+  const [newAction, setNewAction] = useState<string>("organize_extension");
+  const [newPath, setNewPath] = useState("");
+
+  const refresh = useCallback(async () => {
+    try {
+      const list = await listSchedules();
+      setSchedules(list);
+    } catch (e) {
+      console.error("Failed to load schedules:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function handleCreate() {
+    if (!newName.trim() || !newCron.trim() || !newPath.trim()) return;
+    try {
+      await createSchedule(newName.trim(), newCron.trim(), newAction, newPath.trim());
+      setNewName("");
+      setNewCron("");
+      setNewPath("");
+      setShowCreate(false);
+      await refresh();
+      showToast("Schedule created", "success");
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteSchedule(id);
+      await refresh();
+      showToast("Schedule deleted", "info");
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  async function handleToggle(id: string, enabled: boolean) {
+    try {
+      await toggleSchedule(id, enabled);
+      await refresh();
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  async function handleRunNow(id: string) {
+    try {
+      await runScheduleNow(id);
+      await refresh();
+      showToast("Schedule executed", "success");
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  function getActionLabel(action: Schedule["action"]): string {
+    if (action.OrganizeByExtension) return "Organize by Extension";
+    if (action.OrganizeByDate) return "Organize by Date";
+    if (action.ApplyRules) return "Apply Rules";
+    if (action.ScanDuplicates) return "Scan Duplicates";
+    return "Unknown";
+  }
+
+  function getActionPath(action: Schedule["action"]): string {
+    if (action.OrganizeByExtension) return action.OrganizeByExtension.path;
+    if (action.OrganizeByDate) return action.OrganizeByDate.path;
+    if (action.ApplyRules) return action.ApplyRules.path;
+    if (action.ScanDuplicates) return action.ScanDuplicates.path;
+    return "";
+  }
+
   return (
     <div className="space-y-6">
       <SectionCard title="Scheduled Tasks">
         <p className="text-xs text-white/40 mb-3">
           Set up cron-like schedules for automatic organization runs.
         </p>
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-          <p className="text-sm text-white/30">Scheduling coming in Phase 8.</p>
-        </div>
+
+        {/* Create button */}
+        {!showCreate && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="mb-4 rounded-lg bg-afo-purple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-afo-purple/80"
+          >
+            Create Schedule
+          </button>
+        )}
+
+        {/* Create form */}
+        {showCreate && (
+          <div className="mb-4 rounded-lg border border-afo-purple/30 bg-white/[0.02] p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Daily organize"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 outline-none focus:border-afo-purple/50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Cron Expression</label>
+                <input
+                  type="text"
+                  value={newCron}
+                  onChange={(e) => setNewCron(e.target.value)}
+                  placeholder="0 9 * * * (daily at 9am)"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 outline-none focus:border-afo-purple/50"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Action</label>
+                <select
+                  value={newAction}
+                  onChange={(e) => setNewAction(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 outline-none focus:border-afo-purple/50"
+                >
+                  <option value="organize_extension">Organize by Extension</option>
+                  <option value="organize_date">Organize by Date</option>
+                  <option value="apply_rules">Apply Rules</option>
+                  <option value="scan_duplicates">Scan Duplicates</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-white/50">Directory Path</label>
+                <input
+                  type="text"
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  placeholder="/path/to/directory"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 outline-none focus:border-afo-purple/50"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreate}
+                disabled={!newName.trim() || !newCron.trim() || !newPath.trim()}
+                className="rounded-lg bg-afo-purple px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-afo-purple/80 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Schedule list */}
+        {loading ? (
+          <p className="text-xs text-white/30">Loading...</p>
+        ) : schedules.length === 0 ? (
+          <p className="text-xs text-white/30">No schedules configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {schedules.map((schedule) => (
+              <div
+                key={schedule.id}
+                className={`flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 ${
+                  !schedule.enabled ? "opacity-50" : ""
+                }`}
+              >
+                <button
+                  onClick={() => handleToggle(schedule.id, !schedule.enabled)}
+                  className="relative shrink-0"
+                >
+                  <div
+                    className={`h-5 w-9 rounded-full transition-colors ${
+                      schedule.enabled ? "bg-afo-purple/60" : "bg-white/10"
+                    }`}
+                  />
+                  <div
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      schedule.enabled ? "translate-x-4" : ""
+                    }`}
+                  />
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-white/80">{schedule.name}</div>
+                  <div className="text-xs text-white/40">
+                    {schedule.cron} · {getActionLabel(schedule.action)}
+                  </div>
+                  <div className="text-xs text-white/30 truncate">{getActionPath(schedule.action)}</div>
+                </div>
+
+                <button
+                  onClick={() => handleRunNow(schedule.id)}
+                  className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  Run Now
+                </button>
+                <button
+                  onClick={() => handleDelete(schedule.id)}
+                  className="shrink-0 text-xs text-white/30 hover:text-afo-rose"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );

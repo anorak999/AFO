@@ -118,9 +118,9 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Schedule definition: cron expression + action (organize specific dir, apply rules, scan duplicates)
 - [x] IPC commands: `create_schedule`, `list_schedules`, `delete_schedule`, `run_now`
 - [x] Schedules persist to `~/.config/afo/schedules.json`
-- [ ] Frontend: Schedule management in `SettingsPanel` — create/edit/delete cron jobs, next-run display
+- [x] Frontend: Schedule management in `SettingsPanel` — create/edit/delete cron jobs, next-run display
 - [x] Scheduled runs use same engine as manual runs (organizer, rule engine, duplicates)
-- [ ] Notification on scheduled run completion: event to frontend, optional OS notification
+- [x] Notification on scheduled run completion: event to frontend, optional OS notification
 
 ---
 

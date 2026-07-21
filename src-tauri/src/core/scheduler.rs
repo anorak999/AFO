@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
 use serde::{Deserialize, Serialize};
+use tauri::Emitter;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Schedule {
@@ -132,9 +134,9 @@ pub fn toggle_schedule(id: &str, enabled: bool) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-pub async fn run_now(id: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_now(id: &str, app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // Get action from state, then drop lock before await
-    let action = {
+    let (action, schedule_name) = {
         let state = STATE
             .get()
             .ok_or("Scheduler not initialized")?
@@ -147,22 +149,71 @@ pub async fn run_now(id: &str) -> Result<(), Box<dyn std::error::Error>> {
             .find(|s| s.id == id)
             .ok_or_else(|| format!("Schedule {} not found", id))?;
 
-        schedule.action.clone()
+        (schedule.action.clone(), schedule.name.clone())
     };
 
+    info!(schedule = %schedule_name, "Running scheduled task");
+
     // Execute the action
-    match action {
+    let result = match &action {
         ScheduleAction::OrganizeByExtension { path } => {
-            crate::core::organizer::organize_by_extension(&path, false).await?;
+            crate::core::organizer::organize_by_extension(path, false).await
         }
         ScheduleAction::OrganizeByDate { path } => {
-            crate::core::organizer::organize_by_date(&path, false).await?;
+            crate::core::organizer::organize_by_date(path, false).await
         }
-        ScheduleAction::ApplyRules { path } => {
-            crate::core::rule_engine::apply_rules(&path, false)?;
-        }
+        ScheduleAction::ApplyRules { path } => crate::core::rule_engine::apply_rules(path, false)
+            .map(|_| crate::core::organizer::OrganizeResult {
+                total_files: 0,
+                moved: 0,
+                skipped: 0,
+                errors: Vec::new(),
+                dry_run: false,
+            }),
         ScheduleAction::ScanDuplicates { path } => {
-            crate::core::duplicates::scan_duplicates(&path, true, 5)?;
+            crate::core::duplicates::scan_duplicates(path, true, 5).map(|_| {
+                crate::core::organizer::OrganizeResult {
+                    total_files: 0,
+                    moved: 0,
+                    skipped: 0,
+                    errors: Vec::new(),
+                    dry_run: false,
+                }
+            })
+        }
+    };
+
+    // Emit notification
+    match &result {
+        Ok(res) => {
+            info!(
+                schedule = %schedule_name,
+                moved = res.moved,
+                errors = res.errors.len(),
+                "Scheduled task completed"
+            );
+            let _ = app.emit(
+                "afo://schedule-complete",
+                serde_json::json!({
+                    "schedule_id": id,
+                    "schedule_name": schedule_name,
+                    "moved": res.moved,
+                    "errors": res.errors,
+                    "success": true,
+                }),
+            );
+        }
+        Err(e) => {
+            error!(schedule = %schedule_name, error = %e, "Scheduled task failed");
+            let _ = app.emit(
+                "afo://schedule-complete",
+                serde_json::json!({
+                    "schedule_id": id,
+                    "schedule_name": schedule_name,
+                    "error": e.to_string(),
+                    "success": false,
+                }),
+            );
         }
     }
 
@@ -180,5 +231,6 @@ pub async fn run_now(id: &str) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    result?;
     Ok(())
 }
