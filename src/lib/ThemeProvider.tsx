@@ -37,7 +37,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+    setThemeState((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      try { localStorage.setItem("afo-theme", next); } catch {}
+      return next;
+    });
   }, []);
 
   useEffect(() => {

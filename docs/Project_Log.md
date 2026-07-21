@@ -779,3 +779,27 @@ Brief button overlap visible when toggling theme in Settings tab. Caused by Fram
 
 ### Build Verification
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2026-07-21 — Replace Settings Appearance control with ThemeToggle
+
+### Problem
+Settings > General > Appearance used a Light/Dark `<SegmentedControl>` which caused a Framer Motion layoutId overlap with other SegmentedControl instances across mounted panels.
+
+### Fix
+- Replaced the SegmentedControl with a new self-contained `<ThemeToggle>` component (sun/moon gradient slide, from `afo-dev (2)` bundle)
+- `ThemeToggle.tsx` + `ThemeToggle.css` added to `src/components/ui/`
+- Uses `useTheme().toggleTheme` internally — no props needed
+- Fixed `toggleTheme` in `ThemeProvider.tsx` to persist to localStorage (was missing)
+- Removed unused `useTheme` import/call from `GeneralSection`
+- Removed `SegmentedControl` import from `SettingsPanel.tsx` (no longer used in this file)
+
+### Files Added
+- `src/components/ui/ThemeToggle.tsx` — self-contained theme toggle component
+- `src/components/ui/ThemeToggle.css` — scoped styles with `--toggle-size: 10px`
+
+### Files Modified
+- `src/components/SettingsPanel/SettingsPanel.tsx` — swapped control, cleaned imports
+- `src/lib/ThemeProvider.tsx` — `toggleTheme` now persists to localStorage
+
+### Build Verification
+- `npx tsc --noEmit` — ✅ Clean

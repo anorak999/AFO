@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { watchDirectory, unwatchDirectory, listWatchedDirectories, createSchedule, listSchedules, deleteSchedule, toggleSchedule, runScheduleNow, type WatchedDir, type Schedule } from "../../lib/tauri-bridge";
 import { showToast } from "../Toast";
-import { useTheme } from "../../lib/ThemeProvider";
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
-import SegmentedControl from "../ui/SegmentedControl";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 const SECTIONS = [
   { id: "general", label: "General" },
@@ -44,7 +43,6 @@ export default function SettingsPanel() {
 }
 
 function GeneralSection() {
-  const { theme, setTheme } = useTheme();
   const [watchedDirs, setWatchedDirs] = useState<WatchedDir[]>([]);
   const [loadingDirs, setLoadingDirs] = useState(true);
   const [newDir, setNewDir] = useState("");
@@ -71,7 +69,7 @@ function GeneralSection() {
       <Card>
         <CardHeader>General</CardHeader>
         <CardRow label="Appearance" description="Switch between light and dark theme" control={
-          <SegmentedControl options={["Light", "Dark"]} value={theme === "light" ? "Light" : "Dark"} onChange={(v) => setTheme(v === "Light" ? "light" : "dark")} size="sm" layoutId="settings-appearance" />
+          <ThemeToggle />
         } />
         <CardRow label="Recursive scan depth" rightValue="5" />
         <CardRow label="Quarantine auto-delete" rightValue="30 days" />
