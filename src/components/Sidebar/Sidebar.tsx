@@ -68,7 +68,7 @@ export default function Sidebar() {
       {/* Version footer */}
       <div className="px-5 pt-4" style={{ borderTop: "1px solid var(--border-default)" }}>
         <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-          AFO v2.5.0
+          AFO v2.5.1
         </div>
       </div>
     </aside>

@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "./lib/store";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import Sidebar from "./components/Sidebar";
@@ -22,21 +21,22 @@ const panels = {
 
 function ActivePanel() {
   const activePanel = useAppStore((s) => s.activePanel);
-  const Panel = panels[activePanel];
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={activePanel}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-        className="h-full"
-      >
-        <Panel />
-      </motion.div>
-    </AnimatePresence>
+    <div className="relative h-full">
+      {(Object.keys(panels) as (keyof typeof panels)[]).map((id) => {
+        const Panel = panels[id];
+        return (
+          <div
+            key={id}
+            className="absolute inset-0 h-full overflow-y-auto"
+            style={{ display: activePanel === id ? "block" : "none" }}
+          >
+            <Panel />
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
