@@ -132,11 +132,16 @@ npm install
 cargo tauri dev
 ```
 
-### From .deb
+### From Release
 
-```bash
-sudo dpkg -i AFO_2.5.2_amd64.deb
-```
+Download the latest release from [GitHub Releases](https://github.com/anorak999/AFO/releases):
+
+| Platform | Format | Install |
+|:---------|:-------|:--------|
+| Linux | `.deb` | `sudo dpkg -i AFO_2.5.2_amd64.deb` |
+| Linux | `.rpm` | `sudo rpm -i AFO-2.5.2-1.x86_64.rpm` |
+| Windows | `.exe` | Run the NSIS installer |
+| macOS | `.dmg` | Open and drag to Applications |
 
 ### Development Commands
 
@@ -153,54 +158,62 @@ npm run format       # Code formatting
 ## Project Structure
 
 ```
-afo/
-├── src-tauri/                    # Rust backend
+AFO/
+├── .github/workflows/          # CI/CD
+│   └── release.yml             # Cross-platform build + release
+│
+├── src-tauri/                  # Rust backend
 │   ├── src/
-│   │   ├── main.rs               # Entry point
-│   │   ├── lib.rs                # Tauri builder + setup
-│   │   ├── commands.rs           # 25+ IPC command handlers
+│   │   ├── main.rs             # Entry point
+│   │   ├── lib.rs              # Tauri builder + setup
+│   │   ├── commands.rs         # 25+ IPC command handlers
 │   │   └── core/
-│   │       ├── organizer.rs      # File organization engine
-│   │       ├── rule_engine.rs    # Rule evaluation + regex cache
-│   │       ├── duplicates.rs     # blake3 duplicate detection
-│   │       ├── metadata.rs       # EXIF/audio extraction
-│   │       ├── journal.rs        # Undo/redo SQLite journal
-│   │       ├── watcher.rs        # Real-time folder watching
-│   │       ├── scheduler.rs      # Cron automation
-│   │       └── cloud_sync.rs     # Cloud sync (post-launch)
+│   │       ├── organizer.rs    # File organization engine
+│   │       ├── rule_engine.rs  # Rule evaluation + regex cache
+│   │       ├── duplicates.rs   # blake3 duplicate detection
+│   │       ├── metadata.rs     # EXIF/audio extraction
+│   │       ├── journal.rs      # Undo/redo SQLite journal
+│   │       ├── watcher.rs      # Real-time folder watching
+│   │       ├── scheduler.rs    # Cron automation
+│   │       └── cloud_sync.rs   # Cloud sync (post-launch)
 │   ├── Cargo.toml
 │   ├── tauri.conf.json
 │   └── capabilities/default.json
 │
-├── src/                          # React frontend
+├── src/                        # React frontend
 │   ├── components/
-│   │   ├── ui/                   # Design system primitives
-│   │   │   ├── Card.tsx          # Card / CardHeader / CardRow / CardFooter
-│   │   │   ├── Toggle.tsx        # macOS-style toggle switch
-│   │   │   ├── SegmentedControl.tsx  # Uiverse pill-radio tabs
-│   │   │   ├── Button.tsx        # Primary / secondary / danger
-│   │   │   └── hover-button.tsx  # Pointer-trail glass morphism
-│   │   ├── Sidebar/              # Navigation with lucide icons
-│   │   ├── OrganizePanel/        # Main organize UI
-│   │   ├── RuleBuilder/          # React Flow rule editor
-│   │   ├── DuplicatesPanel/      # Duplicate management
-│   │   ├── HistoryPanel/         # Undo/redo history
-│   │   ├── SettingsPanel/        # App configuration
-│   │   ├── PreviewPane/          # Live operation preview
-│   │   ├── DropZone/             # Drag-and-drop intake
-│   │   └── CommandPalette/       # Cmd/Ctrl+K quick actions
+│   │   ├── ui/                 # Design system primitives
+│   │   │   ├── Card.tsx        # Card / CardHeader / CardRow
+│   │   │   ├── Toggle.tsx      # macOS-style toggle switch
+│   │   │   ├── SegmentedControl.tsx  # Pill-radio tabs
+│   │   │   ├── Button.tsx      # Primary / secondary / danger
+│   │   │   └── hover-button.tsx  # Pointer-trail effect
+│   │   ├── Sidebar/            # Navigation with lucide icons
+│   │   ├── OrganizePanel/      # Main organize UI
+│   │   ├── RuleBuilder/        # React Flow rule editor
+│   │   ├── DuplicatesPanel/    # Duplicate management
+│   │   ├── HistoryPanel/       # Undo/redo history
+│   │   ├── SettingsPanel/      # App configuration
+│   │   ├── PreviewPane/        # Live operation preview
+│   │   ├── DropZone/           # Drag-and-drop intake
+│   │   └── CommandPalette/     # Cmd/Ctrl+K quick actions
 │   ├── lib/
-│   │   ├── store.ts              # Zustand state management
-│   │   ├── ThemeProvider.tsx      # Light/dark theme context
-│   │   ├── tauri-bridge.ts       # Typed IPC wrappers
-│   │   └── utils.ts              # cn() className utility
+│   │   ├── store.ts            # Zustand state management
+│   │   ├── ThemeProvider.tsx    # Light/dark theme context
+│   │   ├── tauri-bridge.ts     # Typed IPC wrappers
+│   │   └── utils.ts            # cn() className utility
 │   ├── styles/
-│   │   └── theme.css             # CSS custom properties (light + dark)
+│   │   └── theme.css           # CSS custom properties (light + dark)
 │   ├── App.tsx
 │   └── index.css
 │
+├── docs/                       # Documentation + assets
+│   ├── AFO.png                 # App screenshot
+│   ├── Project_Log.md          # Development log
+│   └── afo-design-concept.html # Design concept
+│
 ├── package.json
-├── tailwind.config.js            # Theme tokens + darkMode: 'class'
+├── tailwind.config.js          # Theme tokens + darkMode: 'class'
 ├── vite.config.ts
 └── README.md
 ```

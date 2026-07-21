@@ -4,6 +4,11 @@ node_modules/
 # Build output
 dist/
 src-tauri/target/
+src-tauri/gen/
+
+# Old dev copies
+afo-dev/
+afo-dev (2)/
 
 # Environment
 .env
