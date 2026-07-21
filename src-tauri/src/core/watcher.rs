@@ -68,38 +68,51 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
         Config::default(),
     )?;
 
-    // Spawn debounce and rate-limiting task
+    // Spawn debounce and rate-limiting task in a dedicated thread
+    // (not tokio::spawn — the Tauri setup hook runs before the Tokio reactor is available)
     let tx_clone = tx.clone();
-    tokio::spawn(async move {
-        let mut pending: HashMap<String, Instant> = HashMap::new();
+    std::thread::Builder::new()
+        .name("watcher-debounce".into())
+        .spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to create tokio runtime for watcher debounce");
 
-        loop {
-            // Wait for next event
-            match tokio::time::timeout(Duration::from_millis(DEBOUNCE_MS), watcher_rx.recv()).await
-            {
-                Ok(Some(path)) => {
-                    pending.insert(path, Instant::now());
-                }
-                Ok(None) => break,
-                Err(_) => {
-                    // Timeout - process pending events
-                    let now = Instant::now();
-                    let ready: Vec<String> = pending
-                        .iter()
-                        .filter(|(_, time)| {
-                            now.duration_since(**time) >= Duration::from_millis(DEBOUNCE_MS)
-                        })
-                        .map(|(path, _)| path.clone())
-                        .collect();
+            rt.block_on(async move {
+                let mut pending: HashMap<String, Instant> = HashMap::new();
 
-                    for path in &ready {
-                        pending.remove(path);
-                        let _ = tx_clone.send(path.clone()).await;
+                loop {
+                    match tokio::time::timeout(
+                        Duration::from_millis(DEBOUNCE_MS),
+                        watcher_rx.recv(),
+                    )
+                    .await
+                    {
+                        Ok(Some(path)) => {
+                            pending.insert(path, Instant::now());
+                        }
+                        Ok(None) => break,
+                        Err(_) => {
+                            let now = Instant::now();
+                            let ready: Vec<String> = pending
+                                .iter()
+                                .filter(|(_, time)| {
+                                    now.duration_since(**time)
+                                        >= Duration::from_millis(DEBOUNCE_MS)
+                                })
+                                .map(|(path, _)| path.clone())
+                                .collect();
+
+                            for path in &ready {
+                                pending.remove(path);
+                                let _ = tx_clone.send(path.clone()).await;
+                            }
+                        }
                     }
                 }
-            }
-        }
-    });
+            });
+        })?;
 
     let state = WatcherState {
         watcher,
