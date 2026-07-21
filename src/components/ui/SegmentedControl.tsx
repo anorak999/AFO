@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect, useCallback } from 'react';
 import './SegmentedControl.css';
 
 interface SegmentedControlProps {
@@ -9,44 +10,65 @@ interface SegmentedControlProps {
   layoutId?: string;
 }
 
+interface TabRect {
+  left: number;
+  width: number;
+}
+
 export default function SegmentedControl({
   options,
   value,
   onChange,
-  size = 'md',
+  size = 'sm',
 }: SegmentedControlProps) {
-  const selectedIndex = Math.max(0, options.indexOf(value));
-  const tabWidth = size === 'sm' ? 110 : 130;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [indicator, setIndicator] = useState<TabRect>({ left: 2, width: 0 });
   const tabHeight = size === 'sm' ? 24 : 28;
 
-  const indicatorStyle = {
-    '--indicator-width': `${tabWidth}px`,
-    '--indicator-height': `${tabHeight}px`,
-    '--indicator-left': `${2 + selectedIndex * tabWidth}px`,
-  } as React.CSSProperties;
+  const measure = useCallback(() => {
+    const container = containerRef.current;
+    const activeIdx = Math.max(0, options.indexOf(value));
+    const activeTab = tabRefs.current[activeIdx];
+    if (!container || !activeTab) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const tabRect = activeTab.getBoundingClientRect();
+    setIndicator({
+      left: tabRect.left - containerRect.left,
+      width: tabRect.width,
+    });
+  }, [options, value]);
+
+  useEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure]);
 
   return (
     <div
+      ref={containerRef}
       className={`tab-container ${size === 'sm' ? 'tab-container--sm' : ''}`}
-      style={indicatorStyle}
     >
-      {options.map((opt) => {
+      {options.map((opt, i) => {
         const id = `tab-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         return (
           <span key={opt} style={{ position: 'relative' }}>
             <input
+              ref={(el) => { tabRefs.current[i] = el; }}
               className="tab-container__input"
               type="radio"
               name={id}
               id={id}
               checked={opt === value}
               onChange={() => onChange(opt)}
-              style={{ width: tabWidth, height: tabHeight }}
+              style={{ height: tabHeight }}
             />
             <label
               className="tab-container__label"
               htmlFor={id}
-              style={{ width: tabWidth, height: tabHeight }}
+              style={{ height: tabHeight }}
             >
               {opt}
             </label>
@@ -56,9 +78,9 @@ export default function SegmentedControl({
       <div
         className="tab-container__indicator"
         style={{
-          width: tabWidth,
           height: tabHeight,
-          left: 2 + selectedIndex * tabWidth,
+          left: indicator.left,
+          width: indicator.width,
         }}
       />
     </div>
