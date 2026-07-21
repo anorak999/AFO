@@ -70,6 +70,17 @@ Cross-platform desktop file organization with rule-based sorting, duplicate dete
 
 ---
 
+## v2.5.2 — GitHub-Style Buttons & UI Refinements
+
+- **GitHub-style buttons** — clean, minimal button design with subtle shadows and hover effects (primary/secondary/danger variants)
+- **SegmentedControl** — rebuilt with Uiverse pill-radio sliding indicator, themed for light/dark modes
+- **HoverButton component** — pointer-trail glass morphism effect for interactive elements
+- **cn() utility** — clsx + tailwind-merge for className composition
+- **RuleFlowEditor toolbar** — converted to use Button component for consistency
+- **GitHub link** — added to About section in Settings
+
+---
+
 ## v2.5 — Native Design System
 
 The v2.5 release introduces a macOS System Settings-inspired design system:
@@ -124,7 +135,7 @@ cargo tauri dev
 ### From .deb
 
 ```bash
-sudo dpkg -i AFO_2.5.0_amd64.deb
+sudo dpkg -i AFO_2.5.2_amd64.deb
 ```
 
 ### Development Commands
@@ -166,8 +177,9 @@ afo/
 │   │   ├── ui/                   # Design system primitives
 │   │   │   ├── Card.tsx          # Card / CardHeader / CardRow / CardFooter
 │   │   │   ├── Toggle.tsx        # macOS-style toggle switch
-│   │   │   ├── SegmentedControl.tsx
-│   │   │   └── Button.tsx        # Primary / secondary / danger
+│   │   │   ├── SegmentedControl.tsx  # Uiverse pill-radio tabs
+│   │   │   ├── Button.tsx        # Primary / secondary / danger
+│   │   │   └── hover-button.tsx  # Pointer-trail glass morphism
 │   │   ├── Sidebar/              # Navigation with lucide icons
 │   │   ├── OrganizePanel/        # Main organize UI
 │   │   ├── RuleBuilder/          # React Flow rule editor
@@ -180,7 +192,8 @@ afo/
 │   ├── lib/
 │   │   ├── store.ts              # Zustand state management
 │   │   ├── ThemeProvider.tsx      # Light/dark theme context
-│   │   └── tauri-bridge.ts       # Typed IPC wrappers
+│   │   ├── tauri-bridge.ts       # Typed IPC wrappers
+│   │   └── utils.ts              # cn() className utility
 │   ├── styles/
 │   │   └── theme.css             # CSS custom properties (light + dark)
 │   ├── App.tsx
