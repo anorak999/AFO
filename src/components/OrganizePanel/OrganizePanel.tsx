@@ -10,7 +10,9 @@ import {
   type OrganizeResult,
   type FileMetadata,
 } from "../../lib/tauri-bridge";
+import { useAppStore } from "../../lib/store";
 import { showToast } from "../Toast";
+import PreviewPane from "../PreviewPane";
 
 type Mode = "extension" | "date" | "rename";
 
@@ -71,6 +73,31 @@ export default function OrganizePanel() {
       unlisten.then((fn) => fn());
     };
   }, []);
+
+  // Handle dropped files from Drag-and-Drop
+  const droppedPaths = useAppStore((s) => s.droppedPaths);
+  const clearDroppedPaths = useAppStore((s) => s.clearDroppedPaths);
+
+  useEffect(() => {
+    if (droppedPaths.length === 0) return;
+
+    const firstPath = droppedPaths[0];
+    // Determine if it's a directory or file — if it's a file, use its parent
+    // For simplicity, treat all as directory paths (Tauri drop gives full paths)
+    const isFile = firstPath.includes(".") && !firstPath.endsWith("/");
+    if (isFile) {
+      // Extract parent directory
+      const parts = firstPath.split("/");
+      parts.pop();
+      setDirPath(parts.join("/") || "/");
+    } else {
+      setDirPath(firstPath);
+    }
+    setFiles([]);
+    setResult(null);
+    clearDroppedPaths();
+    showToast(`Added ${droppedPaths.length} path(s) for organizing`, "info");
+  }, [droppedPaths, clearDroppedPaths]);
 
   async function handleFileClick(filePath: string) {
     setSelectedFile(filePath);
@@ -364,6 +391,17 @@ export default function OrganizePanel() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Live Preview Pane */}
+      {files.length > 0 && (
+        <PreviewPane
+          files={files}
+          mode={mode}
+          dirPath={dirPath}
+          dateFormat={dateFormat}
+          renamePattern={renamePattern}
+        />
       )}
 
       {/* Metadata display */}

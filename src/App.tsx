@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "./lib/store";
 import Sidebar from "./components/Sidebar";
@@ -8,6 +9,7 @@ import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import CommandPalette from "./components/CommandPalette";
 import ToastContainer from "./components/Toast";
+import DropZone from "./components/DropZone";
 
 const panels = {
   organize: OrganizePanel,
@@ -38,12 +40,24 @@ function ActivePanel() {
 }
 
 export default function App() {
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
+  const setDroppedPaths = useAppStore((s) => s.setDroppedPaths);
+
+  const handleFilesDropped = useCallback(
+    (paths: string[]) => {
+      setDroppedPaths(paths);
+      setActivePanel("organize");
+    },
+    [setDroppedPaths, setActivePanel],
+  );
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#050505] text-white">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto">
         <ActivePanel />
       </main>
+      <DropZone onFilesDropped={handleFilesDropped} />
       <CommandPalette />
       <ToastContainer />
     </div>

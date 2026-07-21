@@ -5,9 +5,15 @@ export type Panel = "organize" | "rules" | "duplicates" | "history" | "settings"
 interface AppStore {
   activePanel: Panel;
   setActivePanel: (panel: Panel) => void;
+  droppedPaths: string[];
+  setDroppedPaths: (paths: string[]) => void;
+  clearDroppedPaths: () => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
   activePanel: "organize",
   setActivePanel: (panel) => set({ activePanel: panel }),
+  droppedPaths: [],
+  setDroppedPaths: (paths) => set({ droppedPaths: paths }),
+  clearDroppedPaths: () => set({ droppedPaths: [] }),
 }));

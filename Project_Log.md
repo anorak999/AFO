@@ -439,6 +439,39 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo clippy -- -D warnings` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
 
+## 2025-07-21 — Phase 8 Complete: Scheduled Automation
+
+### Backend Changes (scheduler.rs)
+- `run_now()` now accepts `tauri::AppHandle` and emits `afo://schedule-complete` Tauri events on completion/failure
+- Structured logging via `tracing::info!`/`error!` for scheduled task execution
+- MutexGuard dropped before await points to avoid Send issues
+- Result propagation: `run_now` returns the actual organize/rule result after notifying
+
+### IPC Commands
+- `run_schedule_now` now takes `app: tauri::AppHandle` parameter for event emission
+- All 5 scheduler commands registered: `create_schedule_cmd`, `list_schedules_cmd`, `delete_schedule_cmd`, `toggle_schedule_cmd`, `run_schedule_now`
+
+### Frontend Changes (SettingsPanel)
+- `SchedulingSection` replaced placeholder with full schedule management UI
+- Create form: name, cron expression, action type dropdown, directory path
+- Schedule list: toggle enable/disable, run now, delete, shows cron + action + path
+- All actions call `tauri-bridge.ts` wrapper functions
+- Toast notifications for create/delete/execute actions
+
+### tauri-bridge.ts
+- Added scheduler IPC wrappers: `createSchedule`, `listSchedules`, `deleteSchedule`, `toggleSchedule`, `runScheduleNow`
+- `Schedule` interface with `next_run` field for future display
+
+### TODO.md
+- Marked all Phase 8 items as [x] complete
+
+### Commits
+- Pending: feat: complete Phase 8 scheduled automation with cron scheduling, frontend UI, and event notifications
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+
 ## 2025-07-21 — Phase 4, 5, 6 Complete
 
 ### Phase 4: Duplicate Detection — COMPLETED
@@ -547,3 +580,56 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo fmt` — ✅ Clean
 - `cargo clippy -- -D warnings` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2025-07-21 — Phase 9 Complete: Power-User UI
+
+### Live Preview Pane
+- Created `src/components/PreviewPane/PreviewPane.tsx` — real-time preview of organize operations
+- Shows source files → destination folders with arrow indicators
+- Color-coded by action type: green for move, amber for rename, dimmed for skipped
+- Groups files by category (images, documents, audio, video, archives, code) in extension mode
+- Flat list with date/rename mode previews
+- Shortened destination paths (shows last 2 segments with `…/` prefix)
+- Updates live as user adjusts mode, date format, or rename pattern
+- Integrated into `OrganizePanel` — appears after scan results when files are loaded
+
+### Drag-and-Drop File Intake
+- Created `src/components/DropZone/DropZone.tsx` — full-window drag-drop overlay
+- Uses Tauri v2 native `onDragDropEvent` from `@tauri-apps/api/webview`
+- HTML5 drag events as fallback
+- Animated overlay with dashed border, icon, and instruction text
+- On drop: extracts file paths, navigates to Organize panel, sets directory path
+- Handles both file and directory drops (extracts parent directory for files)
+- Added `droppedPaths` / `clearDroppedPaths` to Zustand store
+
+### Responsive Layout
+- Sidebar now uses `w-60 lg:w-64` responsive width
+- Main content area uses `min-w-0 flex-1` to prevent overflow
+- Added SVG icons to sidebar navigation items for visual clarity
+- App container accepts natural width without forced min-width
+
+### Sidebar Enhancement
+- Added inline SVG icons for all 5 navigation items (Organize, Rules, Duplicates, History, Settings)
+- Icons styled with `shrink-0` for consistent sizing
+- Labels use `truncate` for overflow handling
+
+### Files Created
+- `src/components/PreviewPane/PreviewPane.tsx` — Live preview component
+- `src/components/PreviewPane/index.tsx` — Re-export
+- `src/components/DropZone/DropZone.tsx` — Drag-and-drop overlay
+- `src/components/DropZone/index.tsx` — Re-export
+
+### Files Modified
+- `src/lib/store.ts` — Added `droppedPaths` / `setDroppedPaths` / `clearDroppedPaths` state
+- `src/App.tsx` — Added DropZone, wired dropped paths to store, responsive layout
+- `src/components/OrganizePanel/OrganizePanel.tsx` — Added PreviewPane, dropped path handling
+- `src/components/Sidebar/Sidebar.tsx` — Added SVG icons, responsive width
+- `TODO.md` — Marked all Phase 9 items as [x] complete
+
+### Commits
+- Pending: feat: complete Phase 9 with Live Preview, Drag-and-Drop, Responsive Layout
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `npx eslint src` — ✅ Clean (0 errors, 0 warnings)

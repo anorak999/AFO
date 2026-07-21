@@ -131,13 +131,13 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Keyboard navigation: arrow keys, Enter to execute, Escape to close
 - [x] Staggered reveal animation on open
 - [x] **SettingsPanel** — functional settings with General, Watching, Scheduling, About sections
-- [ ] **Live Preview Pane**: file tree showing what an organize/rule operation would do before committing
-- [ ] Preview updates in real-time as user adjusts parameters
-- [ ] Tree shows source files → destination folders with arrows, color-coded by action type
+- [x] **Live Preview Pane**: file tree showing what an organize/rule operation would do before committing
+- [x] Preview updates in real-time as user adjusts parameters
+- [x] Tree shows source files → destination folders with arrows, color-coded by action type
 - [x] **Sidebar navigation** — animate active indicator, panel transitions with Framer Motion
-- [ ] **Drag-and-drop file intake** — drop files/folders onto the app to organize them
+- [x] **Drag-and-drop file intake** — drop files/folders onto the app to organize them
 - [x] Dark theme throughout, consistent with design concept
-- [ ] Responsive layout: works on 1024px+ screens (desktop app, but don't break on smaller monitors)
+- [x] Responsive layout: works on 1024px+ screens (desktop app, but don't break on smaller monitors)
 
 ---
 
