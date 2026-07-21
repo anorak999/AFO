@@ -77,10 +77,7 @@ pub async fn organize_by_extension(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match retry_move(
-                std::path::Path::new(&file.path),
-                &target_file,
-            ) {
+            match retry_move(std::path::Path::new(&file.path), &target_file) {
                 Ok(()) => result.moved += 1,
                 Err(e) => {
                     if is_permission_denied(&e) {
@@ -91,7 +88,9 @@ pub async fn organize_by_extension(
                         ));
                     } else {
                         warn!(error = %e, file = %file.name, "Failed to move file");
-                        result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                        result
+                            .errors
+                            .push(format!("Failed to move {}: {}", file.name, e));
                     }
                 }
             }
@@ -148,7 +147,9 @@ pub async fn organize_by_date(
             Ok(m) => m,
             Err(e) => {
                 warn!(error = %e, file = %file.name, "Cannot read metadata");
-                result.errors.push(format!("Cannot read {}: {}", file.name, e));
+                result
+                    .errors
+                    .push(format!("Cannot read {}: {}", file.name, e));
                 continue;
             }
         };
@@ -156,7 +157,9 @@ pub async fn organize_by_date(
             Ok(t) => t,
             Err(e) => {
                 warn!(error = %e, file = %file.name, "Cannot read modified time");
-                result.errors.push(format!("Cannot read time for {}: {}", file.name, e));
+                result
+                    .errors
+                    .push(format!("Cannot read time for {}: {}", file.name, e));
                 continue;
             }
         };
@@ -171,10 +174,7 @@ pub async fn organize_by_date(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match retry_move(
-                std::path::Path::new(&file.path),
-                &target_file,
-            ) {
+            match retry_move(std::path::Path::new(&file.path), &target_file) {
                 Ok(()) => result.moved += 1,
                 Err(e) => {
                     if is_permission_denied(&e) {
@@ -185,7 +185,9 @@ pub async fn organize_by_date(
                         ));
                     } else {
                         warn!(error = %e, file = %file.name, "Failed to move file");
-                        result.errors.push(format!("Failed to move {}: {}", file.name, e));
+                        result
+                            .errors
+                            .push(format!("Failed to move {}: {}", file.name, e));
                     }
                 }
             }
@@ -250,10 +252,7 @@ pub async fn batch_rename(
             result.moved += 1;
         } else {
             let target = organizer::unique_path(&new_path);
-            match retry_move(
-                std::path::Path::new(&file.path),
-                &target,
-            ) {
+            match retry_move(std::path::Path::new(&file.path), &target) {
                 Ok(()) => result.moved += 1,
                 Err(e) => {
                     if is_permission_denied(&e) {
@@ -263,7 +262,9 @@ pub async fn batch_rename(
                             file.name
                         ));
                     } else {
-                        result.errors.push(format!("Failed to rename {}: {}", file.name, e));
+                        result
+                            .errors
+                            .push(format!("Failed to rename {}: {}", file.name, e));
                     }
                 }
             }
@@ -460,14 +461,9 @@ pub async fn ml_suggest_category(file_path: String) -> Result<String, String> {
             &["video", "movie", "clip", "tutorial", "stream", "recording"],
             "video",
         ),
+        (&["backup", "archive", "zip", "export", "dump"], "archives"),
         (
-            &["backup", "archive", "zip", "export", "dump"],
-            "archives",
-        ),
-        (
-            &[
-                "main", "index", "app", "config", "test", "lib", "src",
-            ],
+            &["main", "index", "app", "config", "test", "lib", "src"],
             "code",
         ),
     ];

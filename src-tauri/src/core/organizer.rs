@@ -139,10 +139,14 @@ pub(crate) fn unique_path(target: &Path) -> PathBuf {
         }
     }
     // Fallback: shouldn't happen in practice, but handle gracefully
-    let fallback = parent.join(format!("{}_{}", stem, std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()));
+    let fallback = parent.join(format!(
+        "{}_{}",
+        stem,
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    ));
     if !fallback.exists() {
         return fallback;
     }
@@ -184,7 +188,11 @@ pub fn scan_directory(path: &str) -> Result<Vec<FileInfo>, Box<dyn std::error::E
             path: path_str,
             extension,
             size: metadata.len(),
-            is_dir: metadata.is_dir() || is_symlink && std::fs::metadata(entry.path()).map(|m| m.is_dir()).unwrap_or(false),
+            is_dir: metadata.is_dir()
+                || is_symlink
+                    && std::fs::metadata(entry.path())
+                        .map(|m| m.is_dir())
+                        .unwrap_or(false),
         });
     }
 

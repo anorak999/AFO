@@ -152,11 +152,31 @@ pub async fn process_file_event(
         state.last_events.insert(path.to_string(), Instant::now());
     }
 
-    // Load rules and evaluate
-    let rules = rule_engine::load_rules();
-    let enabled_rules: Vec<&rule_engine::Rule> = rules.iter().filter(|r| r.enabled).collect();
+    // ── Issue #5 fix: Cache rules in a thread-local to avoid disk reads ───
+    // Before: load_rules() was called on every file event, triggering a disk
+    // read + JSON parse per event. During bulk copy of 100 files, that's 100
+    // redundant reads. Now rules are cached for 5 seconds and only re-read
+    // when the cache expires.
+    thread_local! {
+        static RULES_CACHE: std::cell::RefCell<Option<(Vec<rule_engine::Rule>, Instant)>> =
+            std::cell::RefCell::new(None);
+    }
 
-    for rule in &enabled_rules {
+    let enabled_rules: Vec<rule_engine::Rule> = RULES_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if let Some((ref rules, loaded_at)) = *cache {
+            if loaded_at.elapsed() < Duration::from_secs(5) {
+                return rules.clone();
+            }
+        }
+        let rules = rule_engine::load_rules();
+        *cache = Some((rules.clone(), Instant::now()));
+        rules
+    });
+    let enabled_refs: Vec<&rule_engine::Rule> =
+        enabled_rules.iter().filter(|r| r.enabled).collect();
+
+    for rule in &enabled_refs {
         if rule_engine::evaluate(path, rule) {
             info!(path = path, rule = rule.name, "File matched rule");
 
