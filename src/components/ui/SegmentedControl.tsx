@@ -1,10 +1,11 @@
-import { motion } from "framer-motion";
+import './SegmentedControl.css';
 
 interface SegmentedControlProps {
   options: string[];
   value: string;
   onChange: (value: string) => void;
-  size?: "sm" | "md";
+  size?: 'sm' | 'md';
+  /** @deprecated No longer used — kept for call-site compat */
   layoutId?: string;
 }
 
@@ -12,40 +13,29 @@ export default function SegmentedControl({
   options,
   value,
   onChange,
-  size = "md",
-  layoutId = "segmented-active",
+  size = 'md',
 }: SegmentedControlProps) {
-  const padding = size === "sm" ? "p-0.5" : "p-1";
-  const text = size === "sm" ? "text-xs" : "text-sm";
-
   return (
     <div
-      className={`inline-flex items-center rounded-lg ${padding}`}
-      style={{ backgroundColor: "var(--segment-bg)" }}
+      className={`cir-tabs ${size === 'sm' ? 'cir-tabs--sm' : ''}`}
+      role="tablist"
     >
       {options.map((opt) => {
-        const isActive = opt === value;
+        const id = `cir-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         return (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className={`relative rounded-md px-3 py-1.5 font-medium transition-colors ${text} ${
-              isActive ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
-            }`}
-          >
-            {isActive && (
-              <motion.div
-                layoutId={layoutId}
-                className="absolute inset-0 rounded-md"
-                style={{
-                  backgroundColor: "var(--segment-active-bg)",
-                  boxShadow: "var(--segment-active-shadow)",
-                }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10">{opt}</span>
-          </button>
+          <span key={opt} style={{ position: 'relative' }}>
+            <input
+              className="cir-tabs__r"
+              type="radio"
+              name={id}
+              id={id}
+              checked={opt === value}
+              onChange={() => onChange(opt)}
+            />
+            <label className="cir-tabs__t" htmlFor={id} role="tab">
+              {opt}
+            </label>
+          </span>
         );
       })}
     </div>
