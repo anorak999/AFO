@@ -756,4 +756,26 @@ Replaced `AnimatePresence` + conditional single-panel render with CSS `display` 
 
 ### Build Verification
 - `npx tsc --noEmit` — ✅ Clean
-- `cargo tauri build --bundles deb` — pending
+- `cargo tauri build --bundles deb` — ✅ AFO_2.5.1_amd64.deb (6.3 MB)
+
+## 2026-07-21 — Fix: SegmentedControl layoutId overlap on theme switch
+
+### Problem
+Brief button overlap visible when toggling theme in Settings tab. Caused by Framer Motion `layoutId="segmented-active"` being hardcoded in `SegmentedControl.tsx` — with all panels now mounted (v2.5.1), multiple SegmentedControl instances share the same `layoutId`, causing Framer Motion to interpolate between their active indicators during reflows.
+
+### Fix
+- Added `layoutId` prop to `SegmentedControl` (defaults to `"segmented-active"` for backward compat)
+- Each call site now passes a unique ID:
+  - Settings Appearance: `"settings-appearance"`
+  - Organize Mode: `"organize-mode"`
+  - Organize Date Format: `"organize-dateformat"`
+  - Duplicates Hash: `"duplicates-hash"`
+
+### Files Modified
+- `src/components/ui/SegmentedControl.tsx` — new `layoutId` prop
+- `src/components/SettingsPanel/SettingsPanel.tsx` — unique layoutId
+- `src/components/OrganizePanel/OrganizePanel.tsx` — unique layoutIds (2 instances)
+- `src/components/DuplicatesPanel/DuplicatesPanel.tsx` — unique layoutId
+
+### Build Verification
+- `npx tsc --noEmit` — ✅ Clean

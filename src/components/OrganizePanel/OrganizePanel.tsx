@@ -127,11 +127,12 @@ export default function OrganizePanel() {
           options={["By Extension", "By Date", "Batch Rename"]}
           value={["By Extension", "By Date", "Batch Rename"][["extension", "date", "rename"].indexOf(mode)]}
           onChange={(v) => { const m: Mode[] = ["extension", "date", "rename"]; setMode(m[["By Extension", "By Date", "Batch Rename"].indexOf(v)]); setResult(null); }}
+          layoutId="organize-mode"
         />
         {mode === "date" && (
           <div className="mt-3">
             <CardRow label="Date Format" control={
-              <SegmentedControl options={["Year/Month", "Full Date"]} value={dateFormat === "yearmonth" ? "Year/Month" : "Full Date"} onChange={(v) => setDateFormat(v === "Year/Month" ? "yearmonth" : "fulldate")} size="sm" />
+              <SegmentedControl options={["Year/Month", "Full Date"]} value={dateFormat === "yearmonth" ? "Year/Month" : "Full Date"} onChange={(v) => setDateFormat(v === "Year/Month" ? "yearmonth" : "fulldate")} size="sm" layoutId="organize-dateformat" />
             } />
           </div>
         )}

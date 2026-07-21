@@ -71,7 +71,7 @@ function GeneralSection() {
       <Card>
         <CardHeader>General</CardHeader>
         <CardRow label="Appearance" description="Switch between light and dark theme" control={
-          <SegmentedControl options={["Light", "Dark"]} value={theme === "light" ? "Light" : "Dark"} onChange={(v) => setTheme(v === "Light" ? "light" : "dark")} size="sm" />
+          <SegmentedControl options={["Light", "Dark"]} value={theme === "light" ? "Light" : "Dark"} onChange={(v) => setTheme(v === "Light" ? "light" : "dark")} size="sm" layoutId="settings-appearance" />
         } />
         <CardRow label="Recursive scan depth" rightValue="5" />
         <CardRow label="Quarantine auto-delete" rightValue="30 days" />

@@ -5,6 +5,7 @@ interface SegmentedControlProps {
   value: string;
   onChange: (value: string) => void;
   size?: "sm" | "md";
+  layoutId?: string;
 }
 
 export default function SegmentedControl({
@@ -12,6 +13,7 @@ export default function SegmentedControl({
   value,
   onChange,
   size = "md",
+  layoutId = "segmented-active",
 }: SegmentedControlProps) {
   const padding = size === "sm" ? "p-0.5" : "p-1";
   const text = size === "sm" ? "text-xs" : "text-sm";
@@ -33,7 +35,7 @@ export default function SegmentedControl({
           >
             {isActive && (
               <motion.div
-                layoutId="segmented-active"
+                layoutId={layoutId}
                 className="absolute inset-0 rounded-md"
                 style={{
                   backgroundColor: "var(--segment-active-bg)",

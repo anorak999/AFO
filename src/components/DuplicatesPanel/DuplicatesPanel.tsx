@@ -92,7 +92,7 @@ export default function DuplicatesPanel() {
       <Card>
         <CardHeader>Hashing Algorithm</CardHeader>
         <CardDescription>Algorithm used for file fingerprinting.</CardDescription>
-        <SegmentedControl options={["BLAKE3", "SHA-256", "MD5"]} value={hashAlgo} onChange={setHashAlgo} />
+        <SegmentedControl options={["BLAKE3", "SHA-256", "MD5"]} value={hashAlgo} onChange={setHashAlgo} layoutId="duplicates-hash" />
       </Card>
 
       {/* Quick Actions */}
