@@ -16,6 +16,7 @@ import {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import type { Rule, RuleCondition, RuleAction } from "../../lib/tauri-bridge";
+import Button from "../ui/Button";
 
 // ── Node Types ──────────────────────────────────────────
 
@@ -369,31 +370,19 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
     <div className="flex flex-col h-[500px] rounded-xl border border-white/[0.06] bg-white/[0.02]">
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2">
-        <button
-          onClick={handleAddCondition}
-          className="rounded-lg border border-afo-sky/30 bg-afo-sky/10 px-3 py-1.5 text-xs font-medium text-afo-sky transition-colors hover:bg-afo-sky/20"
-        >
+        <Button variant="secondary" onClick={handleAddCondition} className="text-xs px-3 py-1.5">
           + Condition
-        </button>
-        <button
-          onClick={handleAddAction}
-          className="rounded-lg border border-afo-emerald/30 bg-afo-emerald/10 px-3 py-1.5 text-xs font-medium text-afo-emerald transition-colors hover:bg-afo-emerald/20"
-        >
+        </Button>
+        <Button variant="secondary" onClick={handleAddAction} className="text-xs px-3 py-1.5">
           + Action
-        </button>
+        </Button>
         <div className="flex-1" />
-        <button
-          onClick={onCancel}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-        >
+        <Button variant="secondary" onClick={onCancel} className="text-xs px-3 py-1.5">
           Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          className="rounded-lg bg-afo-purple px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-afo-purple/80"
-        >
+        </Button>
+        <Button onClick={handleSave} className="text-xs px-3 py-1.5">
           Save Rule
-        </button>
+        </Button>
       </div>
 
       {/* Flow canvas */}

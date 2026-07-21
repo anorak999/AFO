@@ -6,13 +6,7 @@ interface SegmentedControlProps {
   value: string;
   onChange: (value: string) => void;
   size?: 'sm' | 'md';
-  /** @deprecated No longer used — kept for call-site compat */
   layoutId?: string;
-}
-
-interface TabRect {
-  left: number;
-  width: number;
 }
 
 export default function SegmentedControl({
@@ -21,22 +15,23 @@ export default function SegmentedControl({
   onChange,
   size = 'sm',
 }: SegmentedControlProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [indicator, setIndicator] = useState<TabRect>({ left: 2, width: 0 });
-  const tabHeight = size === 'sm' ? 24 : 28;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<(HTMLLabelElement | null)[]>([]);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 
   const measure = useCallback(() => {
-    const container = containerRef.current;
     const activeIdx = Math.max(0, options.indexOf(value));
-    const activeTab = tabRefs.current[activeIdx];
-    if (!container || !activeTab) return;
+    const btn = btnRefs.current[activeIdx];
+    if (!btn) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const tabRect = activeTab.getBoundingClientRect();
+    const wrap = wrapRef.current?.querySelector('.di-radio-island') as HTMLElement | null;
+    if (!wrap) return;
+
+    const islandRect = wrap.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
     setIndicator({
-      left: tabRect.left - containerRect.left,
-      width: tabRect.width,
+      left: btnRect.left - islandRect.left,
+      width: btnRect.width,
     });
   }, [options, value]);
 
@@ -46,43 +41,45 @@ export default function SegmentedControl({
     return () => window.removeEventListener('resize', measure);
   }, [measure]);
 
+  // Unique name so radios from different instances don't collide
+  const groupName = options.map((o) => o.toLowerCase().replace(/[^a-z0-9]+/g, '-')).join('-');
+
   return (
     <div
-      ref={containerRef}
-      className={`tab-container ${size === 'sm' ? 'tab-container--sm' : ''}`}
+      ref={wrapRef}
+      className={`di-radio-wrap ${size === 'sm' ? 'di-radio-wrap--sm' : ''}`}
     >
-      {options.map((opt, i) => {
-        const id = `tab-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-        return (
-          <span key={opt} style={{ position: 'relative' }}>
-            <input
-              ref={(el) => { tabRefs.current[i] = el; }}
-              className="tab-container__input"
-              type="radio"
-              name={id}
-              id={id}
-              checked={opt === value}
-              onChange={() => onChange(opt)}
-              style={{ height: tabHeight }}
-            />
-            <label
-              className="tab-container__label"
-              htmlFor={id}
-              style={{ height: tabHeight }}
-            >
-              {opt}
-            </label>
-          </span>
-        );
-      })}
-      <div
-        className="tab-container__indicator"
-        style={{
-          height: tabHeight,
-          left: indicator.left,
-          width: indicator.width,
-        }}
-      />
+      {options.map((opt, i) => (
+        <input
+          key={opt}
+          type="radio"
+          name={groupName}
+          id={`di-${groupName}-${i}`}
+          className="di-radio-input"
+          checked={opt === value}
+          onChange={() => onChange(opt)}
+        />
+      ))}
+
+      <div className="di-radio-island">
+        {options.map((opt, i) => (
+          <label
+            key={opt}
+            ref={(el) => { btnRefs.current[i] = el; }}
+            className="di-radio-btn"
+            htmlFor={`di-${groupName}-${i}`}
+          >
+            {opt}
+          </label>
+        ))}
+        <div
+          className="di-radio-indicator"
+          style={{
+            transform: `translateX(${indicator.left - 3}px)`,
+            width: indicator.width,
+          }}
+        />
+      </div>
     </div>
   );
 }

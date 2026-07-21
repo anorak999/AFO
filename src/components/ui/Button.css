@@ -1,36 +1,70 @@
-/* Button — adapted from Uiverse.io by e-coders.
+/* Button — GitHub-style from Uiverse.io by e-coders.
    Scoped to .afo-btn; supports primary/secondary/danger variants. */
 
 .afo-btn {
   appearance: none;
-  background-color: transparent;
-  border-radius: 0.9375em;
+  background-color: var(--bg-card, #fafbfc);
+  border: 1px solid var(--border-strong, rgba(27, 31, 35, 0.15));
+  border-radius: 6px;
+  box-shadow:
+    rgba(27, 31, 35, 0.04) 0 1px 0,
+    rgba(255, 255, 255, 0.25) 0 1px 0 inset;
   box-sizing: border-box;
+  color: var(--text-primary, #24292e);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  font-family: Roobert, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: inherit;
   font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 20px;
+  list-style: none;
   margin: 0;
-  min-height: 2.75em;
-  min-width: 0;
-  outline: none;
-  padding: 0.65em 1.6em;
-  text-align: center;
-  text-decoration: none;
-  transition: all 300ms cubic-bezier(0.23, 1, 0.32, 1);
+  padding: 6px 16px;
+  position: relative;
+  transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
-  will-change: transform;
   vertical-align: middle;
+  white-space: nowrap;
+  word-wrap: break-word;
 }
 
-/* Lock icon sizing — prevents baseline shift and flex collapse */
+.afo-btn:hover {
+  background-color: var(--bg-card-hover, #f3f4f6);
+  text-decoration: none;
+  transition-duration: 0.1s;
+}
+
+.afo-btn:disabled {
+  background-color: var(--bg-card, #fafbfc);
+  border-color: var(--border-default, rgba(27, 31, 35, 0.15));
+  color: var(--text-tertiary, #959da5);
+  cursor: default;
+}
+
+.afo-btn:active {
+  background-color: var(--bg-inset, #edeff2);
+  box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+  transition: none 0s;
+}
+
+.afo-btn:focus {
+  outline: 1px transparent;
+}
+
+.afo-btn:before {
+  display: none;
+}
+
+.afo-btn:-webkit-details-marker {
+  display: none;
+}
+
+/* Lock icon sizing */
 .afo-btn svg {
   display: block;
   flex-shrink: 0;
@@ -39,76 +73,70 @@
   vertical-align: middle;
 }
 
-.afo-btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(46, 125, 239, 0.32);
-}
-
-.afo-btn:disabled {
-  pointer-events: none;
-  opacity: 0.4;
-}
-
-.afo-btn:active {
-  box-shadow: none;
-  transform: translateY(0);
-}
-
 /* ── Primary ──────────────────────────────────────────────────────── */
-
 .afo-btn--primary {
-  border: 1px solid var(--accent, #34c759);
-  color: var(--accent, #34c759);
-  background: transparent;
+  background-color: var(--accent, #007aff);
+  border-color: var(--accent, #007aff);
+  color: #ffffff;
+  box-shadow:
+    rgba(0, 0, 0, 0.15) 0 1px 0,
+    rgba(255, 255, 255, 0.2) 0 1px 0 inset;
 }
 
 .afo-btn--primary:hover {
-  color: var(--text-inverse, #fff);
-  background-color: var(--accent, #34c759);
-  box-shadow: 0 8px 15px -4px rgba(0, 0, 0, 0.25);
-  transform: translateY(-2px);
+  background-color: var(--accent-hover, #0066d6);
+  border-color: var(--accent-hover, #0066d6);
+}
+
+.afo-btn--primary:active {
+  background-color: var(--accent-hover, #005bb5);
+}
+
+.afo-btn--primary:disabled {
+  background-color: var(--accent, #007aff);
+  border-color: var(--accent, #007aff);
+  opacity: 0.5;
 }
 
 /* ── Secondary ────────────────────────────────────────────────────── */
-
 .afo-btn--secondary {
-  border: 1px solid var(--border-default, #e3e8ee);
-  color: var(--text-primary, #1a1a1a);
-  background: transparent;
-}
-
-.afo-btn--secondary:hover {
-  color: var(--text-inverse, #fff);
-  background-color: var(--text-primary, #1a1a1a);
-  border-color: var(--text-primary, #1a1a1a);
-  box-shadow: 0 8px 15px -4px rgba(0, 0, 0, 0.25);
-  transform: translateY(-2px);
+  background-color: var(--bg-card, #fafbfc);
+  color: var(--text-primary, #24292e);
 }
 
 /* ── Danger ───────────────────────────────────────────────────────── */
-
 .afo-btn--danger {
-  border: 1px solid var(--danger, #ff3b30);
-  color: var(--danger, #ff3b30);
-  background: transparent;
+  background-color: var(--danger, #ff3b30);
+  border-color: var(--danger, #ff3b30);
+  color: #ffffff;
+  box-shadow:
+    rgba(0, 0, 0, 0.15) 0 1px 0,
+    rgba(255, 255, 255, 0.2) 0 1px 0 inset;
 }
 
 .afo-btn--danger:hover {
-  color: var(--text-inverse, #fff);
+  background-color: #e0342b;
+  border-color: #e0342b;
+}
+
+.afo-btn--danger:active {
+  background-color: #cc2f26;
+}
+
+.afo-btn--danger:disabled {
   background-color: var(--danger, #ff3b30);
-  box-shadow: 0 8px 15px -4px rgba(255, 59, 48, 0.35);
-  transform: translateY(-2px);
+  border-color: var(--danger, #ff3b30);
+  opacity: 0.5;
 }
 
 /* ── Size: sm ─────────────────────────────────────────────────────── */
-
 .afo-btn--sm {
   font-size: 12px;
-  min-height: 2em;
-  padding: 0.4em 1em;
+  padding: 3px 10px;
+  line-height: 18px;
 }
 
 /* ── Full width ───────────────────────────────────────────────────── */
-
 .afo-btn--full {
   width: 100%;
 }
