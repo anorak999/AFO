@@ -16,9 +16,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   documents: "text-afo-amber",
   audio: "text-afo-purple",
   video: "text-afo-rose",
-  archives: "text-white/50",
+  archives: "text-text-secondary",
   code: "text-afo-emerald",
-  other: "text-white/40",
+  other: "text-text-tertiary",
 };
 
 const EXT_TO_CATEGORY: Record<string, string> = {
@@ -176,17 +176,17 @@ export default function PreviewPane({
   const totalSkipped = previewItems.filter((i) => i.actionType === "skip").length;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-xl p-5" style={{ border: "1px solid var(--border-default)", backgroundColor: "var(--bg-inset)" }}>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Live Preview</h3>
-        <span className="text-xs text-white/30">
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Live Preview</h3>
+        <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
           {totalActions} to {mode === "rename" ? "rename" : "move"}
           {totalSkipped > 0 && `, ${totalSkipped} skipped`}
         </span>
       </div>
 
       {previewItems.length === 0 ? (
-        <p className="text-xs text-white/30">No files to preview.</p>
+        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>No files to preview.</p>
       ) : grouped ? (
         // Extension mode — grouped by category
         <div className="space-y-3">
@@ -198,7 +198,7 @@ export default function PreviewPane({
                 >
                   {category}
                 </span>
-                <span className="text-[10px] text-white/20">{items.length} files</span>
+                <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{items.length} files</span>
               </div>
               <div className="ml-2 space-y-0.5">
                 {items.map((item) => (
@@ -230,10 +230,10 @@ function PreviewRow({ item }: { item: PreviewItem }) {
         isSkipped ? "opacity-40" : ""
       }`}
     >
-      <span className="min-w-0 shrink truncate text-white/70">{item.fileName}</span>
+      <span className="min-w-0 shrink truncate" style={{ color: "var(--text-primary)" }}>{item.fileName}</span>
       {!isSkipped && (
         <>
-          <span className="shrink-0 text-white/20">
+          <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>
             {isRename ? (
               <RenameArrow />
             ) : (
@@ -242,7 +242,7 @@ function PreviewRow({ item }: { item: PreviewItem }) {
           </span>
           <span
             className={`min-w-0 shrink truncate ${
-              isRename ? "text-afo-amber/80" : "text-afo-emerald/80"
+              isRename ? "text-afo-amber" : "text-afo-emerald"
             }`}
           >
             {getShortDest(item.destination)}
