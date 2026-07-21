@@ -1,0 +1,133 @@
+/* Toggle switch — adapted from Uiverse.io by Galahhad.
+   Scoped to .afo-toggle only; does not affect ThemeToggle or other
+   Uiverse components. Uses --toggle-on/off-bg from theme.css. */
+
+.afo-toggle {
+  --switch-width: 46px;
+  --switch-height: 24px;
+  --switch-bg: var(--toggle-off-bg, rgb(131, 131, 131));
+  --switch-checked-bg: var(--toggle-on-bg, rgb(0, 218, 80));
+  --switch-offset: calc((var(--switch-height) - var(--circle-diameter)) / 2);
+  --switch-transition: all 0.2s cubic-bezier(0.27, 0.2, 0.25, 1.51);
+  /* circle */
+  --circle-diameter: 18px;
+  --circle-bg: #fff;
+  --circle-shadow: 1px 1px 2px rgba(146, 146, 146, 0.45);
+  --circle-checked-shadow: -1px 1px 2px rgba(163, 163, 163, 0.45);
+  --circle-transition: var(--switch-transition);
+  /* icon */
+  --icon-transition: all 0.2s cubic-bezier(0.27, 0.2, 0.25, 1.51);
+  --icon-cross-color: var(--switch-bg);
+  --icon-cross-size: 6px;
+  --icon-checkmark-color: var(--switch-checked-bg);
+  --icon-checkmark-size: 10px;
+  /* effect line */
+  --effect-width: calc(var(--circle-diameter) / 2);
+  --effect-height: calc(var(--effect-width) / 2 - 1px);
+  --effect-bg: var(--circle-bg);
+  --effect-border-radius: 1px;
+  --effect-transition: all 0.2s ease-in-out;
+}
+
+.afo-toggle--sm {
+  --switch-width: 36px;
+  --switch-height: 18px;
+  --circle-diameter: 14px;
+  --icon-cross-size: 5px;
+  --icon-checkmark-size: 8px;
+}
+
+/* Hide native checkbox */
+.afo-toggle input {
+  display: none;
+}
+
+.afo-toggle {
+  display: inline-block;
+}
+
+.afo-toggle svg {
+  transition: var(--icon-transition);
+  position: absolute;
+  height: auto;
+}
+
+.afo-toggle .afo-checkmark {
+  width: var(--icon-checkmark-size);
+  color: var(--icon-checkmark-color);
+  transform: scale(0);
+}
+
+.afo-toggle .afo-cross {
+  width: var(--icon-cross-size);
+  color: var(--icon-cross-color);
+}
+
+.afo-slider {
+  box-sizing: border-box;
+  width: var(--switch-width);
+  height: var(--switch-height);
+  background: var(--switch-bg);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  transition: var(--switch-transition);
+  cursor: pointer;
+}
+
+.afo-circle {
+  width: var(--circle-diameter);
+  height: var(--circle-diameter);
+  background: var(--circle-bg);
+  border-radius: inherit;
+  box-shadow: var(--circle-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--circle-transition);
+  z-index: 1;
+  position: absolute;
+  left: var(--switch-offset);
+}
+
+.afo-slider::before {
+  content: "";
+  position: absolute;
+  width: var(--effect-width);
+  height: var(--effect-height);
+  left: calc(var(--switch-offset) + (var(--effect-width) / 2));
+  background: var(--effect-bg);
+  border-radius: var(--effect-border-radius);
+  transition: var(--effect-transition);
+}
+
+/* ── Checked state ────────────────────────────────────────────────── */
+
+.afo-toggle input:checked + .afo-slider {
+  background: var(--switch-checked-bg);
+}
+
+.afo-toggle input:checked + .afo-slider .afo-checkmark {
+  transform: scale(1);
+}
+
+.afo-toggle input:checked + .afo-slider .afo-cross {
+  transform: scale(0);
+}
+
+.afo-toggle input:checked + .afo-slider::before {
+  left: calc(100% - var(--effect-width) - (var(--effect-width) / 2) - var(--switch-offset));
+}
+
+.afo-toggle input:checked + .afo-slider .afo-circle {
+  left: calc(100% - var(--circle-diameter) - var(--switch-offset));
+  box-shadow: var(--circle-checked-shadow);
+}
+
+/* ── Disabled state ───────────────────────────────────────────────── */
+
+.afo-toggle input:disabled + .afo-slider {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
