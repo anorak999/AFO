@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "./lib/store";
+import { ThemeProvider } from "./lib/ThemeProvider";
 import Sidebar from "./components/Sidebar";
 import OrganizePanel from "./components/OrganizePanel";
 import RuleBuilder from "./components/RuleBuilder";
@@ -52,14 +53,16 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#050505] text-white">
-      <Sidebar />
-      <main className="min-w-0 flex-1 overflow-y-auto">
-        <ActivePanel />
-      </main>
-      <DropZone onFilesDropped={handleFilesDropped} />
-      <CommandPalette />
-      <ToastContainer />
-    </div>
+    <ThemeProvider>
+      <div className="flex h-screen w-screen overflow-hidden" style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}>
+        <Sidebar />
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <ActivePanel />
+        </main>
+        <DropZone onFilesDropped={handleFilesDropped} />
+        <CommandPalette />
+        <ToastContainer />
+      </div>
+    </ThemeProvider>
   );
 }

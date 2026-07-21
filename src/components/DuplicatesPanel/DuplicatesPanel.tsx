@@ -1,10 +1,10 @@
 import { useState } from "react";
-import {
-  scanDuplicates,
-  quarantineDuplicates,
-  deleteDuplicates,
-  type DuplicateGroup,
-} from "../../lib/tauri-bridge";
+import { Search, Trash2, Shield, ChevronRight } from "lucide-react";
+import { scanDuplicates, quarantineDuplicates, deleteDuplicates, type DuplicateGroup } from "../../lib/tauri-bridge";
+import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
+import Button from "../ui/Button";
+import Toggle from "../ui/Toggle";
+import SegmentedControl from "../ui/SegmentedControl";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -21,323 +21,143 @@ export default function DuplicatesPanel() {
   const [scanning, setScanning] = useState(false);
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [selected, setSelected] = useState<Map<number, Set<number>>>(new Map()); // groupIdx -> set of fileIdx
+  const [selected, setSelected] = useState<Map<number, Set<number>>>(new Map());
   const [actionError, setActionError] = useState("");
+  const [autoQuarantine, setAutoQuarantine] = useState(false);
+  const [preserveFirst, setPreserveFirst] = useState(true);
+  const [hashAlgo, setHashAlgo] = useState("BLAKE3");
 
   async function pickDirectory() {
-    setDirError("");
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const result = await open({ directory: true, multiple: false });
-      if (result && typeof result === "string") {
-        setDirPath(result);
-        setGroups([]);
-        setSelected(new Map());
-        setExpanded(new Set());
-      }
-    } catch {
-      setDirError("Directory picker not available.");
-    }
+      if (result && typeof result === "string") { setDirPath(result); setGroups([]); setSelected(new Map()); setExpanded(new Set()); }
+    } catch { setDirError("Directory picker not available."); }
   }
 
   async function handleScan() {
     if (!dirPath) return;
-    setScanning(true);
-    setActionError("");
-    try {
-      const res = await scanDuplicates(dirPath, recursive, recursive ? maxDepth : undefined);
-      setGroups(res);
-      setSelected(new Map());
-      setExpanded(new Set());
-    } catch (e) {
-      setActionError(String(e));
-    } finally {
-      setScanning(false);
-    }
+    setScanning(true); setActionError("");
+    try { const res = await scanDuplicates(dirPath, recursive, recursive ? maxDepth : undefined); setGroups(res); setSelected(new Map()); setExpanded(new Set()); }
+    catch (e) { setActionError(String(e)); } finally { setScanning(false); }
   }
 
-  function toggleExpand(idx: number) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) {
-        next.delete(idx);
-      } else {
-        next.add(idx);
-      }
-      return next;
-    });
-  }
+  function toggleExpand(idx: number) { setExpanded((p) => { const n = new Set(p); n.has(idx) ? n.delete(idx) : n.add(idx); return n; }); }
+  function toggleFile(gi: number, fi: number) { setSelected((p) => { const n = new Map(p); const g = new Set(n.get(gi) ?? []); g.has(fi) ? g.delete(fi) : g.add(fi); n.set(gi, g); return n; }); }
+  function toggleGroupAll(gi: number, count: number) { setSelected((p) => { const n = new Map(p); const all = n.get(gi)?.size === count; n.set(gi, all ? new Set() : new Set(Array.from({ length: count }, (_, i) => i))); return n; }); }
 
-  function toggleFile(groupIdx: number, fileIdx: number) {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      const group = new Set(next.get(groupIdx) ?? []);
-      if (group.has(fileIdx)) {
-        group.delete(fileIdx);
-      } else {
-        group.add(fileIdx);
-      }
-      next.set(groupIdx, group);
-      return next;
-    });
-  }
-
-  function toggleGroupAll(groupIdx: number, fileCount: number) {
-    setSelected((prev) => {
-      const next = new Map(prev);
-      const current = next.get(groupIdx);
-      const allSelected = current && current.size === fileCount;
-      next.set(
-        groupIdx,
-        allSelected ? new Set() : new Set(Array.from({ length: fileCount }, (_, i) => i)),
-      );
-      return next;
-    });
-  }
-
-  function getSelectedIndices(): number[] {
-    // Returns group indices that have at least one file selected
-    return groups.reduce<number[]>((acc, _, gi) => {
-      const files = selected.get(gi);
-      if (files && files.size > 0) acc.push(gi);
-      return acc;
-    }, []);
-  }
+  function getSelectedIndices(): number[] { return groups.reduce<number[]>((a, _, gi) => { const f = selected.get(gi); if (f && f.size > 0) a.push(gi); return a; }, []); }
 
   async function handleQuarantine() {
-    const indices = getSelectedIndices();
-    if (indices.length === 0) return;
-    try {
-      // Pass groups and indices — but we need to reconstruct per-group file selections
-      // For simplicity, pass all selected groups with their full file list
-      const relevantGroups = indices.map((i) => groups[i]);
-      await quarantineDuplicates(relevantGroups, indices);
-      // Refresh
-      await handleScan();
-    } catch (e) {
-      setActionError(String(e));
-    }
+    const idx = getSelectedIndices(); if (idx.length === 0) return;
+    try { await quarantineDuplicates(idx.map((i) => groups[i]), idx); await handleScan(); } catch (e) { setActionError(String(e)); }
   }
-
   async function handleDelete() {
-    const indices = getSelectedIndices();
-    if (indices.length === 0) return;
-    if (!confirm(`Permanently delete selected duplicate files? This cannot be undone.`)) return;
-    try {
-      const relevantGroups = indices.map((i) => groups[i]);
-      await deleteDuplicates(relevantGroups, indices);
-      await handleScan();
-    } catch (e) {
-      setActionError(String(e));
-    }
+    const idx = getSelectedIndices(); if (idx.length === 0) return;
+    if (!confirm("Permanently delete selected duplicates?")) return;
+    try { await deleteDuplicates(idx.map((i) => groups[i]), idx); await handleScan(); } catch (e) { setActionError(String(e)); }
   }
 
-  const totalRecoverable = groups.reduce((sum, g) => {
-    // All files except the keeper contribute to recoverable space
-    const nonKeeperSize = g.files.filter((f) => !f.is_keeper).reduce((s, f) => s + f.size, 0);
-    return sum + nonKeeperSize;
-  }, 0);
-
-  const totalNonKeeperFiles = groups.reduce(
-    (sum, g) => sum + g.files.filter((f) => !f.is_keeper).length,
-    0,
-  );
-
+  const totalRecoverable = groups.reduce((s, g) => s + g.files.filter((f) => !f.is_keeper).reduce((a, f) => a + f.size, 0), 0);
+  const totalNonKeeper = groups.reduce((s, g) => s + g.files.filter((f) => !f.is_keeper).length, 0);
   const hasSelection = getSelectedIndices().length > 0;
 
   return (
-    <div className="flex flex-col gap-6 p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Duplicate Detection</h1>
-        <p className="mt-1 text-sm text-white/40">
-          Find and manage duplicate files across your directories.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5 p-6">
+      <div><h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Duplicate Detection</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>Find and manage duplicate files across your directories.</p></div>
 
-      {/* Directory picker */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={pickDirectory}
-          className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          Choose Directory
-        </button>
-        <div className="min-w-0 flex-1 truncate rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-sm text-white/40">
-          {dirPath || "No directory selected"}
+      {/* Directory */}
+      <Card>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={pickDirectory} className="gap-2"><Search size={14} /> Choose Directory</Button>
+          <div className="min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: "var(--bg-inset)", color: dirPath ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+            {dirPath || "No directory selected"}
+          </div>
         </div>
-      </div>
-      {dirError && <p className="text-xs text-afo-rose">{dirError}</p>}
+        {dirError && <p className="mt-2 text-xs" style={{ color: "var(--danger)" }}>{dirError}</p>}
+      </Card>
 
-      {/* Options */}
-      <div className="flex items-center gap-6">
-        <label className="flex cursor-pointer items-center gap-3">
-          <div className="relative">
-            <input
-              type="checkbox"
-              checked={recursive}
-              onChange={(e) => setRecursive(e.target.checked)}
-              className="peer sr-only"
-            />
-            <div className="h-5 w-9 rounded-full bg-white/10 transition-colors peer-checked:bg-afo-purple/60" />
-            <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
-          </div>
-          <span className="text-sm text-white/50">Recursive</span>
-        </label>
+      {/* Detection Settings */}
+      <Card>
+        <CardHeader>Detection Settings</CardHeader>
+        <CardDescription>Configure how duplicates are detected.</CardDescription>
+        <CardRow label="Recursive" description="Scan subdirectories" control={<Toggle checked={recursive} onChange={setRecursive} />} />
+        {recursive && <CardRow label="Max Depth" control={<input type="number" min={1} max={20} value={maxDepth} onChange={(e) => setMaxDepth(Number(e.target.value) || 5)} className="w-16 rounded-lg px-2 py-1 text-sm text-center" style={{ backgroundColor: "var(--bg-inset)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />} />}
+        <CardRow label="Auto-Quarantine" description="Automatically quarantine duplicates" control={<Toggle checked={autoQuarantine} onChange={setAutoQuarantine} />} />
+        <CardRow label="Preserve First Occurrence" description="Keep the first file found" control={<Toggle checked={preserveFirst} onChange={setPreserveFirst} />} />
+      </Card>
 
-        {recursive && (
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-white/40">Max depth</label>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={maxDepth}
-              onChange={(e) => setMaxDepth(Number(e.target.value) || 5)}
-              className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white/80 outline-none focus:border-afo-purple/50"
-            />
-          </div>
-        )}
-      </div>
+      {/* Hashing Algorithm */}
+      <Card>
+        <CardHeader>Hashing Algorithm</CardHeader>
+        <CardDescription>Algorithm used for file fingerprinting.</CardDescription>
+        <SegmentedControl options={["BLAKE3", "SHA-256", "MD5"]} value={hashAlgo} onChange={setHashAlgo} />
+      </Card>
 
-      {/* Scan button */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleScan}
-          disabled={!dirPath || scanning}
-          className="rounded-xl bg-afo-purple px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-afo-purple/80 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {scanning ? "Scanning..." : "Scan for Duplicates"}
-        </button>
-      </div>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>Quick Actions</CardHeader>
+        <Button onClick={handleScan} disabled={!dirPath || scanning} className="w-full gap-2">
+          <Search size={14} /> {scanning ? "Scanning..." : "Scan for Duplicates"}
+        </Button>
+      </Card>
 
-      {actionError && (
-        <p className="rounded-lg bg-afo-rose/10 px-3 py-2 text-xs text-afo-rose">{actionError}</p>
-      )}
+      {actionError && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "rgba(255,59,48,0.06)", color: "var(--danger)" }}>{actionError}</div>}
 
-      {/* Results */}
+      {/* Results Summary */}
       {groups.length > 0 && (
-        <>
-          {/* Summary */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold">{groups.length}</div>
-                <div className="text-xs text-white/40">Duplicate Groups</div>
+        <Card>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div><div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{groups.length}</div><div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Groups</div></div>
+            <div><div className="text-2xl font-bold" style={{ color: "var(--warning)" }}>{totalNonKeeper}</div><div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Recoverable</div></div>
+            <div><div className="text-2xl font-bold" style={{ color: "var(--success)" }}>{formatBytes(totalRecoverable)}</div><div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Space</div></div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <Button variant="secondary" onClick={handleQuarantine} disabled={!hasSelection} className="gap-2"><Shield size={14} /> Quarantine</Button>
+            <Button variant="danger" onClick={handleDelete} disabled={!hasSelection} className="gap-2"><Trash2 size={14} /> Delete</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Groups */}
+      {groups.map((group, gi) => {
+        const isExpanded = expanded.has(gi);
+        const groupSelected = selected.get(gi) ?? new Set();
+        const allSelected = groupSelected.size === group.files.length;
+        return (
+          <Card key={gi}>
+            <div className="flex items-center gap-4">
+              <button onClick={() => toggleExpand(gi)} className="shrink-0 transition-transform" style={{ color: "var(--text-tertiary)", transform: isExpanded ? "rotate(90deg)" : "" }}>
+                <ChevronRight size={14} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-mono text-xs" style={{ color: "var(--text-secondary)" }} title={group.hash}>{group.hash}</div>
+                <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{group.files.length} files · {formatBytes(group.total_size)}</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-afo-amber">{totalNonKeeperFiles}</div>
-                <div className="text-xs text-white/40">Recoverable Files</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-afo-emerald">
-                  {formatBytes(totalRecoverable)}
-                </div>
-                <div className="text-xs text-white/40">Recoverable Space</div>
-              </div>
+              <Button variant="secondary" onClick={() => toggleGroupAll(gi, group.files.length)} className="text-xs px-3 py-1">
+                {allSelected ? "Deselect All" : "Select All"}
+              </Button>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleQuarantine}
-              disabled={!hasSelection}
-              className="rounded-xl border border-afo-amber/30 bg-afo-amber/10 px-4 py-2 text-sm font-medium text-afo-amber transition-colors hover:bg-afo-amber/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Quarantine Selected
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={!hasSelection}
-              className="rounded-xl border border-afo-rose/30 bg-afo-rose/10 px-4 py-2 text-sm font-medium text-afo-rose transition-colors hover:bg-afo-rose/20 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Delete Selected
-            </button>
-          </div>
-
-          {/* Groups list */}
-          <div className="space-y-2">
-            {groups.map((group, gi) => {
-              const isExpanded = expanded.has(gi);
-              const groupSelected = selected.get(gi) ?? new Set();
-              const allSelected = groupSelected.size === group.files.length;
-              return (
-                <div key={gi} className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
-                  {/* Group header */}
-                  <div className="flex items-center gap-4 px-5 py-3.5">
-                    <button
-                      onClick={() => toggleExpand(gi)}
-                      className="shrink-0 text-xs text-white/40 transition-transform hover:text-white/60"
-                      style={{ transform: isExpanded ? "rotate(90deg)" : "" }}
-                    >
-                      ▶
-                    </button>
+            {isExpanded && (
+              <div className="mt-3 space-y-1.5" style={{ borderTop: "1px solid var(--border-default)", paddingTop: 12 }}>
+                {group.files.map((file, fi) => (
+                  <label key={fi} className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors" style={{ backgroundColor: groupSelected.has(fi) ? "var(--accent-soft)" : "transparent" }}>
+                    <input type="checkbox" checked={groupSelected.has(fi)} onChange={() => toggleFile(gi, fi)} className="h-4 w-4 rounded accent-[var(--accent)]" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-xs text-white/60" title={group.hash}>
-                        {group.hash}
-                      </div>
-                      <div className="mt-0.5 text-xs text-white/30">
-                        {group.files.length} file{group.files.length !== 1 ? "s" : ""} ·{" "}
-                        {formatBytes(group.total_size)}
-                      </div>
+                      <div className="truncate text-sm" style={{ color: "var(--text-primary)" }}>{file.path}</div>
+                      <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{formatBytes(file.size)}</div>
                     </div>
-                    <button
-                      onClick={() => toggleGroupAll(gi, group.files.length)}
-                      className={`shrink-0 rounded-lg border px-3 py-1 text-xs transition-colors ${
-                        allSelected
-                          ? "border-afo-purple/40 bg-afo-purple/10 text-afo-purple"
-                          : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
-                      }`}
-                    >
-                      {allSelected ? "Deselect All" : "Select All"}
-                    </button>
-                  </div>
+                    {file.is_keeper && <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "rgba(52,199,89,0.1)", color: "var(--success)" }}>Keeper</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+          </Card>
+        );
+      })}
 
-                  {/* Expanded file list */}
-                  {isExpanded && (
-                    <div className="border-t border-white/[0.06] px-5 py-3">
-                      <div className="space-y-1.5">
-                        {group.files.map((file, fi) => (
-                          <label
-                            key={fi}
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-                              groupSelected.has(fi) ? "bg-afo-purple/5" : "hover:bg-white/[0.02]"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={groupSelected.has(fi)}
-                              onChange={() => toggleFile(gi, fi)}
-                              className="h-4 w-4 rounded border-white/20 bg-white/5 text-afo-purple accent-afo-purple"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm text-white/70">{file.path}</div>
-                              <div className="text-xs text-white/30">{formatBytes(file.size)}</div>
-                            </div>
-                            {file.is_keeper && (
-                              <span className="shrink-0 rounded-md bg-afo-emerald/15 px-2 py-0.5 text-[10px] font-medium text-afo-emerald">
-                                Keeper
-                              </span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Empty state after scan */}
-      {!scanning && dirPath && groups.length === 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-          <p className="text-sm text-white/40">No duplicates found.</p>
-        </div>
-      )}
+      {!scanning && dirPath && groups.length === 0 && <Card><p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>No duplicates found.</p></Card>}
     </div>
   );
 }
