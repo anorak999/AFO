@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { FolderOpen, GitBranch, Copy, History, Settings } from "lucide-react";
 import { useAppStore, type Panel } from "../../lib/store";
+import logo from "../../assets/logo.png";
 
 const NAV_ITEMS: { id: Panel; label: string; icon: typeof FolderOpen; cssVar: string }[] = [
   { id: "organize", label: "Organize", icon: FolderOpen, cssVar: "--icon-organize" },
@@ -24,12 +25,11 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="mb-8 flex items-center gap-3 px-5">
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] text-sm font-bold"
-          style={{ background: "var(--accent)", color: "var(--text-inverse)" }}
-        >
-          AF
-        </div>
+        <img
+          src={logo}
+          alt="AFO"
+          className="h-9 w-9 rounded-[10px] object-cover"
+        />
         <div>
           <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             AFO
