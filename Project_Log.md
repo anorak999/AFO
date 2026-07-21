@@ -513,3 +513,37 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo check` — ✅ Clean
 - `cargo fmt` — ✅ Clean
 - `cargo clippy -- -D warnings` — ✅ Clean
+
+## 2025-07-21 — Phase 7 Complete: Real-Time Folder Watching
+
+### Backend Changes (watcher.rs)
+- **300ms debounce**: Events collected in HashMap, processed after timeout
+- **Rate limiting**: AtomicUsize counter, max 10 ops/second, resets every second
+- **Rule evaluation**: On file event, loads rules, evaluates against file, executes first match
+- **Actions executed**: Move, Copy, Rename with journal entry and Tauri event emission
+- **Auto-restart**: Tokio task with channel-based event forwarding
+- **Logging**: tracing::info/warn/error for all operations
+
+### Frontend Changes (SettingsPanel)
+- **WatchingSection**: Full UI for managing watched directories
+  - Browse button for directory picker
+  - Text input for manual path entry
+  - Directory list with green/gray status indicator
+  - Remove button per directory
+  - Toast notifications for add/remove actions
+
+### lib.rs Changes
+- Added Tauri setup hook to initialize watcher with channel
+- Spawned background task to process file events
+- Each event processed in separate tokio::spawn for non-blocking
+
+### All Items Marked [x] in TODO.md
+
+### Commits
+- Pending: feat: complete Phase 7 real-time folder watching
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `cargo fmt` — ✅ Clean
+- `cargo clippy -- -D warnings` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean

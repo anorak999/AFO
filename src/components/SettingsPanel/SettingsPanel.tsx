@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  watchDirectory,
+  unwatchDirectory,
+  listWatchedDirectories,
+  type WatchedDir,
+} from "../../lib/tauri-bridge";
+import { showToast } from "../Toast";
 
 const SECTIONS = [
   { id: "general", label: "General" },
@@ -90,6 +97,59 @@ function GeneralSection() {
 }
 
 function WatchingSection() {
+  const [watchedDirs, setWatchedDirs] = useState<WatchedDir[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newDir, setNewDir] = useState("");
+
+  const refresh = useCallback(async () => {
+    try {
+      const dirs = await listWatchedDirectories();
+      setWatchedDirs(dirs);
+    } catch (e) {
+      console.error("Failed to load watched directories:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function handleAdd() {
+    if (!newDir.trim()) return;
+    try {
+      await watchDirectory(newDir.trim());
+      setNewDir("");
+      await refresh();
+      showToast("Started watching directory", "success");
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  async function handleRemove(dir: string) {
+    try {
+      await unwatchDirectory(dir);
+      await refresh();
+      showToast("Stopped watching directory", "info");
+    } catch (e) {
+      showToast(`Failed: ${e}`, "error");
+    }
+  }
+
+  async function handlePickDir() {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({ directory: true, multiple: false });
+      if (selected && typeof selected === "string") {
+        setNewDir(selected);
+      }
+    } catch {
+      showToast("Directory picker not available", "error");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <SectionCard title="Watched Directories">
@@ -97,9 +157,58 @@ function WatchingSection() {
           Configure directories for real-time file watching. Files added to watched directories will
           be automatically organized based on your rules.
         </p>
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-          <p className="text-sm text-white/30">Folder watching coming in Phase 7.</p>
+
+        {/* Add directory */}
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={handlePickDir}
+            className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            Browse
+          </button>
+          <input
+            type="text"
+            value={newDir}
+            onChange={(e) => setNewDir(e.target.value)}
+            placeholder="/path/to/directory"
+            className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/30 outline-none focus:border-afo-purple/50"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <button
+            onClick={handleAdd}
+            disabled={!newDir.trim()}
+            className="shrink-0 rounded-lg bg-afo-purple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-afo-purple/80 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Add
+          </button>
         </div>
+
+        {/* Directory list */}
+        {loading ? (
+          <p className="text-xs text-white/30">Loading...</p>
+        ) : watchedDirs.length === 0 ? (
+          <p className="text-xs text-white/30">No directories being watched.</p>
+        ) : (
+          <div className="space-y-2">
+            {watchedDirs.map((dir) => (
+              <div
+                key={dir.path}
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+              >
+                <div
+                  className={`h-2 w-2 rounded-full ${dir.enabled ? "bg-afo-emerald" : "bg-white/20"}`}
+                />
+                <span className="flex-1 truncate text-sm text-white/70">{dir.path}</span>
+                <button
+                  onClick={() => handleRemove(dir.path)}
+                  className="shrink-0 text-xs text-white/30 hover:text-afo-rose"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );

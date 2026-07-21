@@ -1,10 +1,21 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
+use tracing::{error, info, warn};
+
+use crate::core::journal;
+use crate::core::organizer::unique_path;
+use crate::core::rule_engine;
+use tauri::Emitter;
+
+const DEBOUNCE_MS: u64 = 300;
+const MAX_OPS_PER_SECOND: usize = 10;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WatchedDir {
@@ -15,6 +26,9 @@ pub struct WatchedDir {
 struct WatcherState {
     watcher: RecommendedWatcher,
     watched: HashMap<String, bool>,
+    last_events: HashMap<String, Instant>,
+    ops_count: Arc<AtomicUsize>,
+    ops_reset_time: Instant,
 }
 
 static STATE: OnceLock<Mutex<WatcherState>> = OnceLock::new();
@@ -33,7 +47,7 @@ where
 }
 
 pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let (watcher_tx, watcher_rx) = std::sync::mpsc::channel();
+    let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel::<String>(100);
 
     let watcher = RecommendedWatcher::new(
         move |res: Result<Event, notify::Error>| {
@@ -42,7 +56,8 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
                     EventKind::Create(_) | EventKind::Modify(_) => {
                         for path in &event.paths {
                             if path.is_file() {
-                                let _ = watcher_tx.send(path.to_string_lossy().to_string());
+                                let _ =
+                                    watcher_tx.blocking_send(path.to_string_lossy().to_string());
                             }
                         }
                     }
@@ -53,22 +68,228 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
         Config::default(),
     )?;
 
-    // Spawn a thread to forward events to the async channel
+    // Spawn debounce and rate-limiting task
     let tx_clone = tx.clone();
-    std::thread::spawn(move || {
-        while let Ok(path) = watcher_rx.recv() {
-            let _ = tx_clone.blocking_send(path);
+    tokio::spawn(async move {
+        let mut pending: HashMap<String, Instant> = HashMap::new();
+
+        loop {
+            // Wait for next event
+            match tokio::time::timeout(Duration::from_millis(DEBOUNCE_MS), watcher_rx.recv()).await
+            {
+                Ok(Some(path)) => {
+                    pending.insert(path, Instant::now());
+                }
+                Ok(None) => break,
+                Err(_) => {
+                    // Timeout - process pending events
+                    let now = Instant::now();
+                    let ready: Vec<String> = pending
+                        .iter()
+                        .filter(|(_, time)| {
+                            now.duration_since(**time) >= Duration::from_millis(DEBOUNCE_MS)
+                        })
+                        .map(|(path, _)| path.clone())
+                        .collect();
+
+                    for path in &ready {
+                        pending.remove(path);
+                        let _ = tx_clone.send(path.clone()).await;
+                    }
+                }
+            }
         }
     });
 
     let state = WatcherState {
         watcher,
         watched: HashMap::new(),
+        last_events: HashMap::new(),
+        ops_count: Arc::new(AtomicUsize::new(0)),
+        ops_reset_time: Instant::now(),
     };
 
     STATE
         .set(Mutex::new(state))
         .map_err(|_| "Watcher already initialized")?;
+
+    Ok(())
+}
+
+/// Process a file event: evaluate rules, execute actions, journal, emit event
+pub async fn process_file_event(
+    path: &str,
+    app: &tauri::AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Rate limiting
+    {
+        let state = STATE.get().ok_or("Watcher not initialized")?;
+        let mut state = state.lock().map_err(|e| e.to_string())?;
+
+        // Reset counter every second
+        if state.ops_reset_time.elapsed() >= Duration::from_secs(1) {
+            state.ops_count.store(0, Ordering::Relaxed);
+            state.ops_reset_time = Instant::now();
+        }
+
+        let count = state.ops_count.fetch_add(1, Ordering::Relaxed);
+        if count >= MAX_OPS_PER_SECOND {
+            warn!(path = path, "Rate limit exceeded, skipping event");
+            return Ok(());
+        }
+    }
+
+    // Check debounce
+    {
+        let state = STATE.get().ok_or("Watcher not initialized")?;
+        let mut state = state.lock().map_err(|e| e.to_string())?;
+
+        if let Some(last_time) = state.last_events.get(path) {
+            if last_time.elapsed() < Duration::from_millis(DEBOUNCE_MS) {
+                return Ok(());
+            }
+        }
+        state.last_events.insert(path.to_string(), Instant::now());
+    }
+
+    // Load rules and evaluate
+    let rules = rule_engine::load_rules();
+    let enabled_rules: Vec<&rule_engine::Rule> = rules.iter().filter(|r| r.enabled).collect();
+
+    for rule in &enabled_rules {
+        if rule_engine::evaluate(path, rule) {
+            info!(path = path, rule = rule.name, "File matched rule");
+
+            // Execute actions
+            let file_path = std::path::Path::new(path);
+            let filename = file_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+
+            for action in &rule.actions {
+                match action {
+                    rule_engine::Action::Move { destination } => {
+                        let dest_dir = std::path::Path::new(destination);
+                        std::fs::create_dir_all(dest_dir)?;
+                        let target = unique_path(&dest_dir.join(&filename));
+
+                        // Record in journal before move
+                        let entry = journal::JournalEntry {
+                            id: 0,
+                            operation_type: "move".to_string(),
+                            source_path: path.to_string(),
+                            dest_path: target.to_string_lossy().to_string(),
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                            reverted: false,
+                        };
+                        let _ = journal::record_operation(&entry);
+
+                        match std::fs::rename(path, &target) {
+                            Ok(()) => {
+                                let dest_str = target.to_string_lossy().to_string();
+                                info!(source = path, dest = dest_str, "Auto-organized file");
+                                let _ = app.emit(
+                                    "afo://activity",
+                                    serde_json::json!({
+                                        "type": "move",
+                                        "source": path,
+                                        "destination": dest_str,
+                                        "rule": rule.name,
+                                    }),
+                                );
+                            }
+                            Err(e) => {
+                                error!(error = %e, path = path, "Failed to auto-organize file");
+                            }
+                        }
+                    }
+                    rule_engine::Action::Copy { destination } => {
+                        let dest_dir = std::path::Path::new(destination);
+                        std::fs::create_dir_all(dest_dir)?;
+                        let target = unique_path(&dest_dir.join(&filename));
+
+                        let entry = journal::JournalEntry {
+                            id: 0,
+                            operation_type: "copy".to_string(),
+                            source_path: path.to_string(),
+                            dest_path: target.to_string_lossy().to_string(),
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                            reverted: false,
+                        };
+                        let _ = journal::record_operation(&entry);
+
+                        match std::fs::copy(path, &target) {
+                            Ok(_) => {
+                                let dest_str = target.to_string_lossy().to_string();
+                                info!(source = path, dest = dest_str, "Auto-copied file");
+                                let _ = app.emit(
+                                    "afo://activity",
+                                    serde_json::json!({
+                                        "type": "copy",
+                                        "source": path,
+                                        "destination": dest_str,
+                                        "rule": rule.name,
+                                    }),
+                                );
+                            }
+                            Err(e) => {
+                                error!(error = %e, path = path, "Failed to auto-copy file");
+                            }
+                        }
+                    }
+                    rule_engine::Action::Rename { pattern } => {
+                        let name_no_ext = file_path
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        let ext = file_path
+                            .extension()
+                            .map(|e| e.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        let new_name = pattern
+                            .replace("{name}", &name_no_ext)
+                            .replace("{ext}", &ext)
+                            .replace("{counter}", "1");
+                        let parent = file_path.parent().unwrap_or(std::path::Path::new("."));
+                        let target = unique_path(&parent.join(&new_name));
+
+                        let entry = journal::JournalEntry {
+                            id: 0,
+                            operation_type: "rename".to_string(),
+                            source_path: path.to_string(),
+                            dest_path: target.to_string_lossy().to_string(),
+                            timestamp: chrono::Utc::now().to_rfc3339(),
+                            reverted: false,
+                        };
+                        let _ = journal::record_operation(&entry);
+
+                        match std::fs::rename(path, &target) {
+                            Ok(()) => {
+                                let dest_str = target.to_string_lossy().to_string();
+                                info!(source = path, dest = dest_str, "Auto-renamed file");
+                                let _ = app.emit(
+                                    "afo://activity",
+                                    serde_json::json!({
+                                        "type": "rename",
+                                        "source": path,
+                                        "destination": dest_str,
+                                        "rule": rule.name,
+                                    }),
+                                );
+                            }
+                            Err(e) => {
+                                error!(error = %e, path = path, "Failed to auto-rename file");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Only apply first matching rule
+            break;
+        }
+    }
 
     Ok(())
 }
@@ -85,6 +306,7 @@ pub fn start_watching(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
             .watch(&path, RecursiveMode::Recursive)
             .map_err(|e| e.to_string())?;
         state.watched.insert(dir.to_string(), true);
+        info!(dir = dir, "Started watching directory");
         Ok(())
     })?;
 
@@ -97,6 +319,7 @@ pub fn stop_watching(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     with_state(|state| {
         state.watcher.unwatch(&path).map_err(|e| e.to_string())?;
         state.watched.insert(dir.to_string(), false);
+        info!(dir = dir, "Stopped watching directory");
         Ok(())
     })?;
 

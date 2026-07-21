@@ -1,6 +1,8 @@
 mod commands;
 pub mod core;
 
+use tokio::sync::mpsc;
+
 pub fn run() {
     // Initialize tracing
     let log_path = dirs::data_local_dir()
@@ -33,6 +35,30 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // Initialize watcher with channel
+            let (tx, mut rx) = mpsc::channel::<String>(100);
+
+            if let Err(e) = core::watcher::init_watcher(tx) {
+                tracing::error!(error = %e, "Failed to initialize watcher");
+            }
+
+            // Spawn task to process file events
+            let app_handle = app.handle().clone();
+            tokio::spawn(async move {
+                while let Some(path) = rx.recv().await {
+                    let app_clone = app_handle.clone();
+                    let path_clone = path.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = core::watcher::process_file_event(&path_clone, &app_clone).await {
+                            tracing::error!(error = %e, path = %path_clone, "Failed to process file event");
+                        }
+                    });
+                }
+            });
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::scan_directory,
             commands::organize_by_extension,

@@ -100,15 +100,15 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 
 - [x] `src-tauri/core/watcher.rs` — `start_watching(dir)`, `stop_watching(dir)`, `list_watched()`
 - [x] Use `notify` crate with platform-appropriate backend (inotify/ReadDirectoryChangesW/FSEvents)
-- [ ] 300ms debounce window to avoid thrashing on bulk copy
-- [ ] Rate limiting: max N operations per second (configurable, default 10)
-- [ ] On file event: evaluate matching rules, execute actions, journal entry, emit Tauri event
-- [ ] Auto-restart watcher task on crash with exponential backoff, log failure
+- [x] 300ms debounce window to avoid thrashing on bulk copy
+- [x] Rate limiting: max N operations per second (configurable, default 10)
+- [x] On file event: evaluate matching rules, execute actions, journal entry, emit Tauri event
+- [x] Auto-restart watcher task on crash with exponential backoff, log failure
 - [x] Opt-in per directory — not global by default
 - [x] IPC commands: `watch_directory`, `unwatch_directory`, `list_watched_directories`
-- [ ] Frontend: Watch settings in `SettingsPanel` — add/remove watched dirs, toggle on/off per dir
-- [ ] Live activity feed: animated toast for each auto-organized file
-- [ ] Background Tauri process — lightweight, no UI blocking
+- [x] Frontend: Watch settings in `SettingsPanel` — add/remove watched dirs, toggle on/off per dir
+- [x] Live activity feed: animated toast for each auto-organized file
+- [x] Background Tauri process — lightweight, no UI blocking
 
 ---
 
