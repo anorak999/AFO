@@ -1,68 +1,87 @@
-/* Segmented control — adapted from Uiverse.io by uiverse-astronaut.
-   Scoped to .cir-tabs; does not affect other components. */
+/* Segmented control — adapted from Uiverse.io by zanina-yassine.
+   Sliding indicator tab bar. Scoped to .tab-container. */
 
-.cir-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px;
-  background: var(--segment-bg, #ffffff);
-  border: 1px solid var(--border-default, #e3e8ee);
-  border-radius: 999px;
-  box-shadow:
-    0 1px 1px rgba(14, 17, 22, 0.04),
-    0 20px 40px -24px rgba(14, 17, 22, 0.18);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+.tab-container {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 2px;
+  background-color: var(--bg-inset, #dadadb);
+  border-radius: 9px;
 }
 
-.cir-tabs--sm {
-  padding: 4px;
-  gap: 2px;
+.tab-container--sm {
+  border-radius: 7px;
 }
 
-.cir-tabs__r {
+.tab-container__indicator {
+  width: var(--indicator-width, 130px);
+  height: var(--indicator-height, 28px);
+  background: var(--bg-card, #ffffff);
   position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  top: 2px;
+  left: var(--indicator-left, 2px);
+  z-index: 1;
+  border: 0.5px solid rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0px 3px 8px rgba(0, 0, 0, 0.12),
+    0px 3px 1px rgba(0, 0, 0, 0.04);
+  border-radius: 7px;
+  transition: left 0.2s ease-out;
 }
 
-.cir-tabs__t {
-  display: inline-flex;
+.tab-container--sm .tab-container__indicator {
+  height: 24px;
+  border-radius: 5px;
+}
+
+.tab-container__input {
+  width: var(--indicator-width, 130px);
+  height: var(--indicator-height, 28px);
+  position: absolute;
+  z-index: 10;
+  outline: none;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.tab-container--sm .tab-container__input {
+  height: 24px;
+}
+
+.tab-container__label {
+  width: var(--indicator-width, 130px);
+  height: var(--indicator-height, 28px);
+  position: relative;
+  z-index: 11;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font-size: 14px;
+  border: 0;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-secondary, #5b6472);
+  opacity: 0.6;
   cursor: pointer;
-  white-space: nowrap;
   user-select: none;
-  transition:
-    background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.2s ease-out;
+  padding: 0;
 }
 
-.cir-tabs--sm .cir-tabs__t {
-  height: 28px;
-  padding: 0 12px;
-  font-size: 12px;
+.tab-container--sm .tab-container__label {
+  height: 24px;
+  font-size: 0.7rem;
 }
 
-.cir-tabs__t:hover {
+.tab-container__input:checked + .tab-container__label {
+  opacity: 1;
   color: var(--text-primary, #0e1116);
 }
 
-.cir-tabs__r:checked + .cir-tabs__t {
-  background: var(--text-primary, #0e1116);
-  color: var(--bg-card, #ffffff);
-  box-shadow:
-    0 1px 1px rgba(14, 17, 22, 0.06),
-    0 8px 18px -10px rgba(14, 17, 22, 0.5);
-}
-
-.cir-tabs__r:focus-visible + .cir-tabs__t {
-  box-shadow: 0 0 0 3px rgba(46, 125, 239, 0.32);
+.tab-container__input:focus-visible + .tab-container__label {
+  outline: 2px solid var(--border-focus, #007aff);
+  outline-offset: -2px;
+  border-radius: 7px;
 }

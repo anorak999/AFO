@@ -15,29 +15,52 @@ export default function SegmentedControl({
   onChange,
   size = 'md',
 }: SegmentedControlProps) {
+  const selectedIndex = Math.max(0, options.indexOf(value));
+  const tabWidth = size === 'sm' ? 110 : 130;
+  const tabHeight = size === 'sm' ? 24 : 28;
+
+  const indicatorStyle = {
+    '--indicator-width': `${tabWidth}px`,
+    '--indicator-height': `${tabHeight}px`,
+    '--indicator-left': `${2 + selectedIndex * tabWidth}px`,
+  } as React.CSSProperties;
+
   return (
     <div
-      className={`cir-tabs ${size === 'sm' ? 'cir-tabs--sm' : ''}`}
-      role="tablist"
+      className={`tab-container ${size === 'sm' ? 'tab-container--sm' : ''}`}
+      style={indicatorStyle}
     >
       {options.map((opt) => {
-        const id = `cir-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        const id = `tab-${opt.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         return (
           <span key={opt} style={{ position: 'relative' }}>
             <input
-              className="cir-tabs__r"
+              className="tab-container__input"
               type="radio"
               name={id}
               id={id}
               checked={opt === value}
               onChange={() => onChange(opt)}
+              style={{ width: tabWidth, height: tabHeight }}
             />
-            <label className="cir-tabs__t" htmlFor={id} role="tab">
+            <label
+              className="tab-container__label"
+              htmlFor={id}
+              style={{ width: tabWidth, height: tabHeight }}
+            >
               {opt}
             </label>
           </span>
         );
       })}
+      <div
+        className="tab-container__indicator"
+        style={{
+          width: tabWidth,
+          height: tabHeight,
+          left: 2 + selectedIndex * tabWidth,
+        }}
+      />
     </div>
   );
 }
