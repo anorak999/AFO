@@ -30,14 +30,6 @@ export default function Sidebar() {
           alt="AFO"
           className="h-9 w-9 rounded-[10px] object-cover"
         />
-        <div>
-          <div className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            AFO
-          </div>
-          <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-            v2.5 Native
-          </div>
-        </div>
       </div>
 
       {/* Nav */}
