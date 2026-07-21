@@ -44,12 +44,14 @@ pub fn run() {
             }
 
             // Spawn task to process file events
+            // Use tauri::async_runtime::spawn — tokio::spawn panics here because
+            // the Tauri setup hook runs before the Tokio reactor is available.
             let app_handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 while let Some(path) = rx.recv().await {
                     let app_clone = app_handle.clone();
                     let path_clone = path.clone();
-                    tokio::spawn(async move {
+                    tauri::async_runtime::spawn(async move {
                         if let Err(e) = core::watcher::process_file_event(&path_clone, &app_clone).await {
                             tracing::error!(error = %e, path = %path_clone, "Failed to process file event");
                         }
