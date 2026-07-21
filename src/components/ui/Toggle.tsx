@@ -11,7 +11,7 @@ export default function Toggle({ checked, onChange, disabled, size = "md" }: Tog
   const w = size === "sm" ? 36 : 44;
   const h = size === "sm" ? 20 : 26;
   const knob = size === "sm" ? 16 : 22;
-  const pad = size === "sm" ? 2 : 2;
+  const pad = 2;
 
   return (
     <button
@@ -20,7 +20,7 @@ export default function Toggle({ checked, onChange, disabled, size = "md" }: Tog
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="relative shrink-0 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+      className="relative shrink-0 rounded-full transition-colors duration-200 focus:outline-none"
       style={{
         width: w,
         height: h,
@@ -30,17 +30,20 @@ export default function Toggle({ checked, onChange, disabled, size = "md" }: Tog
     >
       <motion.div
         className="absolute rounded-full"
-        style={{
-          width: knob,
-          height: knob,
-          backgroundColor: checked ? "var(--toggle-on-knob)" : "var(--toggle-off-knob)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-        }}
+        initial={false}
         animate={{
           x: checked ? w - knob - pad : pad,
           y: pad,
         }}
         transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        style={{
+          top: 0,
+          left: 0,
+          width: knob,
+          height: knob,
+          backgroundColor: checked ? "var(--toggle-on-knob)" : "var(--toggle-off-knob)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+        }}
       />
     </button>
   );
