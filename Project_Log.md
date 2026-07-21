@@ -490,3 +490,26 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - `cargo fmt` — ✅ Clean
 - `cargo clippy -- -D warnings` — ✅ Clean
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2025-07-21 — Phase 5 EXIF Date Taken for Organize-by-Date
+
+### Changes
+- Updated `organize_by_date()` in `organizer.rs` to use EXIF date taken
+- Added `get_file_date()` helper function:
+  - First tries to extract EXIF date taken from image files
+  - Parses EXIF date format "YYYY:MM:DD HH:MM:SS" using chrono
+  - Falls back to filesystem created/modified timestamps
+- Organize-by-date now places photos in correct year/month folders based on when they were taken, not when the file was modified
+
+### Example
+- Photo taken on 2023-07-15 but downloaded on 2024-01-10
+- Old behavior: sorted to 2024/01/
+- New behavior: sorted to 2023/07/
+
+### Commits
+- Pending: feat: use EXIF date taken for organize-by-date
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `cargo fmt` — ✅ Clean
+- `cargo clippy -- -D warnings` — ✅ Clean

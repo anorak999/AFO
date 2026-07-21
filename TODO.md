@@ -77,7 +77,7 @@ Cross-platform file organizer. Tauri v2 (Rust) + React + Tailwind.
 - [x] Extend rule engine conditions to support EXIF tags and audio tags (add to `ConditionType` enum)
 - [x] IPC commands: `get_metadata` — return combined EXIF/audio metadata for a file
 - [x] Frontend: metadata display in file preview / organize panel detail view
-- [ ] Organize-by-date can use EXIF date taken as source attribute (not just filesystem timestamps)
+- [x] Organize-by-date can use EXIF date taken as source attribute (not just filesystem timestamps)
 - [x] Graceful fallback: files without metadata skip metadata-based conditions silently
 
 ---

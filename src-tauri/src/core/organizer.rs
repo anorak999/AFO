@@ -236,11 +236,19 @@ pub async fn organize_by_date(
             continue;
         }
 
-        let metadata = std::fs::metadata(&file.path)?;
-        let modified = metadata.modified()?;
-        let datetime: chrono::DateTime<chrono::Local> = modified.into();
-        let date_folder = datetime.format("%Y/%m").to_string();
+        // Try to get date from EXIF first, fall back to filesystem timestamp
+        let datetime = get_file_date(&file.path).unwrap_or_else(|| {
+            // Fallback to filesystem modified time
+            std::fs::metadata(&file.path)
+                .and_then(|m| m.modified())
+                .map(|t| {
+                    let dt: chrono::DateTime<chrono::Local> = t.into();
+                    dt
+                })
+                .unwrap_or_else(|_| chrono::Local::now())
+        });
 
+        let date_folder = datetime.format("%Y/%m").to_string();
         let target_dir = std::path::Path::new(path).join(&date_folder);
 
         if dry_run {
@@ -262,6 +270,33 @@ pub async fn organize_by_date(
     }
 
     Ok(result)
+}
+
+/// Get the date for a file, preferring EXIF date taken for images
+fn get_file_date(path: &str) -> Option<chrono::DateTime<chrono::Local>> {
+    let p = std::path::Path::new(path);
+
+    // Try to extract EXIF date taken for image files
+    let metadata = crate::core::metadata::extract_metadata(path);
+    if let Some(exif) = &metadata.exif {
+        if let Some(date_taken) = &exif.date_taken {
+            // Parse EXIF date format "YYYY:MM:DD HH:MM:SS"
+            if let Ok(naive) =
+                chrono::NaiveDateTime::parse_from_str(date_taken, "%Y:%m:%d %H:%M:%S")
+            {
+                let local = naive.and_local_timezone(chrono::Local).single()?;
+                return Some(local);
+            }
+        }
+    }
+
+    // Fall back to filesystem timestamps
+    let fs_meta = std::fs::metadata(p).ok()?;
+
+    // Try created first, then modified
+    let sys_time = fs_meta.created().or_else(|_| fs_meta.modified()).ok()?;
+    let datetime: chrono::DateTime<chrono::Local> = sys_time.into();
+    Some(datetime)
 }
 
 pub async fn batch_rename(
