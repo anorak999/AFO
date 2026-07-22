@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { RotateCcw, RotateCw, Undo2 } from "lucide-react";
+import { RotateCcw, RotateCw, Undo2, Zap } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
 import { getHistory, undoLast, undoOperation, redoLast, type JournalEntry } from "../../lib/tauri-bridge";
 import { Card, CardHeader, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
@@ -13,6 +14,15 @@ const OP_COLORS: Record<string, { bg: string; fg: string }> = {
   delete: { bg: "rgba(255,59,48,0.1)", fg: "var(--danger)" },
 };
 
+interface LiveEvent {
+  id: string;
+  type: string;
+  source: string;
+  destination?: string;
+  rule?: string;
+  timestamp: Date;
+}
+
 export default function HistoryPanel() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +32,21 @@ export default function HistoryPanel() {
   const [acting, setActing] = useState(false);
   const [enableUndoRedo, setEnableUndoRedo] = useState(true);
   const [keepFullHistory] = useState(true);
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+
+  useEffect(() => {
+    const unlisten = listen<{ type: string; source: string; destination?: string; rule?: string }>(
+      "afo://activity",
+      (event) => {
+        const { type, source, destination, rule } = event.payload;
+        setLiveEvents((prev) => [
+          { id: crypto.randomUUID(), type, source, destination, rule, timestamp: new Date() },
+          ...prev,
+        ].slice(0, 50));
+      },
+    );
+    return () => { unlisten.then((fn) => fn()); };
+  }, []);
 
   const refresh = useCallback(async (off = 0, append = false) => {
     try { const batch = await getHistory(PAGE_SIZE, off); setEntries((p) => (append ? [...p, ...batch] : batch)); setHasMore(batch.length === PAGE_SIZE); }
@@ -60,6 +85,36 @@ export default function HistoryPanel() {
       </Card>
 
       {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "rgba(255,59,48,0.06)", color: "var(--danger)" }}>{error}</div>}
+
+      {/* Live Activity Feed */}
+      {liveEvents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <span className="flex items-center gap-2"><Zap size={14} style={{ color: "var(--success)" }} /> Live Activity</span>
+          </CardHeader>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {liveEvents.map((evt) => {
+              const colors = OP_COLORS[evt.type] ?? { bg: "var(--bg-inset)", fg: "var(--text-secondary)" };
+              const filename = evt.source.split(/[\\/]/).pop() || evt.source;
+              return (
+                <div key={evt.id} className="flex items-center gap-3 rounded-lg px-3 py-2" style={{ backgroundColor: "var(--bg-inset)" }}>
+                  <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={{ backgroundColor: colors.bg, color: colors.fg }}>{evt.type}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm truncate" style={{ color: "var(--text-primary)" }}>{filename}</span>
+                    {evt.destination && (
+                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}> → {evt.destination.split(/[\\/]/).pop()}</span>
+                    )}
+                    {evt.rule && (
+                      <span className="text-xs ml-1" style={{ color: "var(--accent)" }}>({evt.rule})</span>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-[10px]" style={{ color: "var(--text-tertiary)" }}>{evt.timestamp.toLocaleTimeString()}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Recent Operations */}
       <Card>

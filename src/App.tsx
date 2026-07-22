@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useAppStore } from "./lib/store";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import Sidebar from "./components/Sidebar";
@@ -8,7 +9,7 @@ import DuplicatesPanel from "./components/DuplicatesPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import CommandPalette from "./components/CommandPalette";
-import ToastContainer from "./components/Toast";
+import ToastContainer, { showToast } from "./components/Toast";
 import DropZone from "./components/DropZone";
 
 const panels = {
@@ -51,6 +52,23 @@ export default function App() {
     },
     [setDroppedPaths, setActivePanel],
   );
+
+  useEffect(() => {
+    const unlisten = listen<{ type: string; source: string; destination?: string; rule?: string }>(
+      "afo://activity",
+      (event) => {
+        const { type, source, destination, rule } = event.payload;
+        const filename = source.split(/[\\/]/).pop() || source;
+        if (type === "move" && destination) {
+          const destName = destination.split(/[\\/]/).pop() || destination;
+          showToast(`Moved "${filename}" → "${destName}"${rule ? ` by rule "${rule}"` : ""}`, "success");
+        } else {
+          showToast(`${type}: ${filename}`, "info");
+        }
+      },
+    );
+    return () => { unlisten.then((fn) => fn()); };
+  }, []);
 
   return (
     <ThemeProvider>
