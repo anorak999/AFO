@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FolderOpen } from "lucide-react";
 import { listRules, saveRules, applyRules, type Rule, type RuleCondition, type RuleAction } from "../../lib/tauri-bridge";
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
@@ -178,6 +178,13 @@ export default function RuleBuilder() {
         <CardHeader>Test Rules</CardHeader>
         <CardDescription>Enter a directory path to dry-run all rules against.</CardDescription>
         <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={async () => {
+            try {
+              const { open } = await import("@tauri-apps/plugin-dialog");
+              const sel = await open({ directory: true, multiple: false });
+              if (sel && typeof sel === "string") setDryRunPath(sel);
+            } catch { /* ignore */ }
+          }} className="gap-2"><FolderOpen size={14} /> Choose Directory</Button>
           <input type="text" value={dryRunPath} onChange={(e) => setDryRunPath(e.target.value)} placeholder="/path/to/directory" className={`min-w-0 flex-1 ${inputCls}`} style={inputStyle} />
           <Button variant="secondary" onClick={handleDryRun} disabled={!dryRunPath}>Dry Run</Button>
         </div>
