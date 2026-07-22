@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAppStore, type Panel } from "../../lib/store";
+import { undoLast, redoLast } from "../../lib/tauri-bridge";
+import { showToast } from "../Toast";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -115,21 +117,22 @@ export default function CommandPalette() {
       },
       {
         id: "action-scan",
-        label: "Scan Current Directory",
+        label: "Go to Organize",
         category: "Actions",
-        action: () => {
-          // placeholder — no directory selected state handled by panel
-          setOpen(false);
-        },
+        action: () => navigate("organize"),
         keywords: ["scan", "directory", "folder", "analyze"],
       },
       {
         id: "action-undo",
         label: "Undo Last Operation",
         category: "Actions",
-        action: () => {
+        action: async () => {
           setOpen(false);
-          // TODO: wire to backend undo when ready
+          try {
+            const entry = await undoLast();
+            if (entry) showToast(`Undid ${entry.operation_type}`, "success");
+            else showToast("Nothing to undo", "info");
+          } catch (e) { showToast(`Undo failed: ${e}`, "error"); }
         },
         keywords: ["undo", "revert", "back"],
       },
@@ -137,9 +140,13 @@ export default function CommandPalette() {
         id: "action-redo",
         label: "Redo Last Operation",
         category: "Actions",
-        action: () => {
+        action: async () => {
           setOpen(false);
-          // TODO: wire to backend redo when ready
+          try {
+            const entry = await redoLast();
+            if (entry) showToast(`Redid ${entry.operation_type}`, "success");
+            else showToast("Nothing to redo", "info");
+          } catch (e) { showToast(`Redo failed: ${e}`, "error"); }
         },
         keywords: ["redo", "forward"],
       },

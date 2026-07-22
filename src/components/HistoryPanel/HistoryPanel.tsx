@@ -21,7 +21,7 @@ export default function HistoryPanel() {
   const [hasMore, setHasMore] = useState(true);
   const [acting, setActing] = useState(false);
   const [enableUndoRedo, setEnableUndoRedo] = useState(true);
-  const [keepFullHistory, setKeepFullHistory] = useState(true);
+  const [keepFullHistory] = useState(true);
 
   const refresh = useCallback(async (off = 0, append = false) => {
     try { const batch = await getHistory(PAGE_SIZE, off); setEntries((p) => (append ? [...p, ...batch] : batch)); setHasMore(batch.length === PAGE_SIZE); }
@@ -47,7 +47,7 @@ export default function HistoryPanel() {
       <Card>
         <CardHeader>History Settings</CardHeader>
         <CardRow label="Enable Undo/Redo" description="Allow reverting operations" control={<Toggle checked={enableUndoRedo} onChange={setEnableUndoRedo} />} />
-        <CardRow label="Keep Full History" description="Store all operations" control={<Toggle checked={keepFullHistory} onChange={setKeepFullHistory} />} />
+        <CardRow label="Keep Full History" description="Store all operations (always on)" control={<Toggle checked={keepFullHistory} onChange={() => {}} disabled />} />
       </Card>
 
       {/* Actions */}

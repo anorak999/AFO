@@ -1,10 +1,12 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
+use chrono::{Datelike, Local, Timelike};
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Schedule {
@@ -233,4 +235,85 @@ pub async fn run_now(id: &str, app: &tauri::AppHandle) -> Result<(), Box<dyn std
 
     result?;
     Ok(())
+}
+
+/// Parse a single cron field (minute, hour, dom, month, dow) and check if it matches the given value.
+/// Supports: "*" (any), "N" (exact), "N-M" (range), "N/S" (step), "N,M,O" (list).
+fn cron_field_matches(field: &str, value: u32) -> bool {
+    for part in field.split(',') {
+        let part = part.trim();
+        if part == "*" {
+            return true;
+        }
+        if let Some((start, step)) = part.split_once('/') {
+            let step: u32 = match step.parse() {
+                Ok(s) if s > 0 => s,
+                _ => return false,
+            };
+            let start_val: u32 = if start == "*" { 0 } else { start.parse().unwrap_or(0) };
+            if value >= start_val && (value - start_val) % step == 0 {
+                return true;
+            }
+        } else if let Some((start, end)) = part.split_once('-') {
+            let start: u32 = start.parse().unwrap_or(0);
+            let end: u32 = end.parse().unwrap_or(0);
+            if value >= start && value <= end {
+                return true;
+            }
+        } else if let Ok(exact) = part.parse::<u32>() {
+            if value == exact {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Check if the current time matches a 5-field cron expression (min hour dom month dow).
+fn matches_cron(cron_expr: &str, now: chrono::DateTime<Local>) -> bool {
+    let fields: Vec<&str> = cron_expr.split_whitespace().collect();
+    if fields.len() != 5 {
+        return false;
+    }
+    cron_field_matches(fields[0], now.minute())
+        && cron_field_matches(fields[1], now.hour())
+        && cron_field_matches(fields[2], now.day())
+        && cron_field_matches(fields[3], now.month())
+        && cron_field_matches(fields[4], now.weekday().num_days_from_sunday())
+}
+
+/// Background loop that checks schedules every 60 seconds and fires matching ones.
+pub async fn start_scheduler_loop(app: tauri::AppHandle) {
+    info!("Scheduler cron loop started");
+    let mut interval = tokio::time::interval(Duration::from_secs(60));
+
+    loop {
+        interval.tick().await;
+
+        // Snapshot enabled schedules
+        let schedules: Vec<Schedule> = {
+            match STATE.get() {
+                Some(state) => match state.lock() {
+                    Ok(s) => s
+                        .schedules
+                        .iter()
+                        .filter(|s| s.enabled)
+                        .cloned()
+                        .collect(),
+                    Err(_) => continue,
+                },
+                None => continue,
+            }
+        };
+
+        let now = Local::now();
+        for schedule in &schedules {
+            if matches_cron(&schedule.cron, now) {
+                info!(schedule = %schedule.name, "Cron match — running scheduled task");
+                if let Err(e) = run_now(&schedule.id, &app).await {
+                    warn!(schedule = %schedule.name, error = %e, "Scheduled task failed");
+                }
+            }
+        }
+    }
 }

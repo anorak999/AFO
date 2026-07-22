@@ -299,7 +299,7 @@ pub async fn organize_by_date(
 }
 
 /// Get the date for a file, preferring EXIF date taken for images
-fn get_file_date(path: &str) -> Option<chrono::DateTime<chrono::Local>> {
+pub(crate) fn get_file_date(path: &str) -> Option<chrono::DateTime<chrono::Local>> {
     let p = std::path::Path::new(path);
 
     // Try to extract EXIF date taken for image files

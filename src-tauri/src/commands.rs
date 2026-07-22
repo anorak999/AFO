@@ -120,11 +120,12 @@ pub async fn organize_by_extension(
 }
 
 #[tauri::command]
-#[instrument(skip(app), fields(path = %path, dry_run))]
+#[instrument(skip(app), fields(path = %path, dry_run, date_format))]
 pub async fn organize_by_date(
     app: tauri::AppHandle,
     path: String,
     dry_run: bool,
+    date_format: Option<String>,
 ) -> Result<organizer::OrganizeResult, String> {
     info!("Organizing by date");
     let files = organizer::scan_directory(&path).map_err(|e| e.to_string())?;
@@ -136,35 +137,29 @@ pub async fn organize_by_date(
         dry_run,
     };
 
+    let fmt = match date_format.as_deref() {
+        Some("fulldate") => "%Y/%m/%d",
+        _ => "%Y/%m",
+    };
+
     for (i, file) in files.iter().enumerate() {
         if file.is_dir {
             result.skipped += 1;
             continue;
         }
 
-        // Per-file metadata read — don't abort the whole operation
-        let metadata = match std::fs::metadata(&file.path) {
-            Ok(m) => m,
-            Err(e) => {
-                warn!(error = %e, file = %file.name, "Cannot read metadata");
-                result
-                    .errors
-                    .push(format!("Cannot read {}: {}", file.name, e));
-                continue;
-            }
-        };
-        let modified = match metadata.modified() {
-            Ok(t) => t,
-            Err(e) => {
-                warn!(error = %e, file = %file.name, "Cannot read modified time");
-                result
-                    .errors
-                    .push(format!("Cannot read time for {}: {}", file.name, e));
-                continue;
-            }
-        };
-        let datetime: chrono::DateTime<chrono::Local> = modified.into();
-        let date_folder = datetime.format("%Y/%m").to_string();
+        // Use get_file_date() which prefers EXIF date taken, falls back to fs timestamps
+        let datetime = organizer::get_file_date(&file.path).unwrap_or_else(|| {
+            std::fs::metadata(&file.path)
+                .and_then(|m| m.modified())
+                .map(|t| {
+                    let dt: chrono::DateTime<chrono::Local> = t.into();
+                    dt
+                })
+                .unwrap_or_else(|_| chrono::Local::now())
+        });
+
+        let date_folder = datetime.format(fmt).to_string();
         let target_dir = std::path::Path::new(&path).join(&date_folder);
 
         if dry_run {

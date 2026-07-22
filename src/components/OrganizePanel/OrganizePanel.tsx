@@ -84,7 +84,7 @@ export default function OrganizePanel() {
       let res: OrganizeResult;
       switch (mode) {
         case "extension": res = await organizeByExtension(dirPath, dryRun); break;
-        case "date": res = await organizeByDate(dirPath, dryRun); break;
+        case "date": res = await organizeByDate(dirPath, dryRun, dateFormat); break;
         case "rename": res = await batchRename(dirPath, renamePattern, dryRun); break;
       }
       setResult(res);

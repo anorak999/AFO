@@ -181,14 +181,29 @@ function SchedulesCard() {
 }
 
 function NotificationsSection() {
+  const [settings, setSettings] = useState<{ operationComplete: boolean; scheduledRun: boolean; errorAlerts: boolean }>(() => {
+    try {
+      const saved = localStorage.getItem("afo-notification-settings");
+      return saved ? JSON.parse(saved) : { operationComplete: true, scheduledRun: true, errorAlerts: true };
+    } catch { return { operationComplete: true, scheduledRun: true, errorAlerts: true }; }
+  });
+
+  function toggle(key: keyof typeof settings) {
+    setSettings((prev: typeof settings) => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem("afo-notification-settings", JSON.stringify(next));
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader>Notifications</CardHeader>
         <CardDescription>Configure when and how you receive notifications.</CardDescription>
-        <CardRow label="Operation Complete" description="Toast when organize/rename finishes" control={<Toggle checked={true} onChange={() => {}} />} />
-        <CardRow label="Scheduled Run" description="Notify on cron job completion" control={<Toggle checked={true} onChange={() => {}} />} />
-        <CardRow label="Error Alerts" description="Show errors immediately" control={<Toggle checked={true} onChange={() => {}} />} />
+        <CardRow label="Operation Complete" description="Toast when organize/rename finishes" control={<Toggle checked={settings.operationComplete} onChange={() => toggle("operationComplete")} />} />
+        <CardRow label="Scheduled Run" description="Notify on cron job completion" control={<Toggle checked={settings.scheduledRun} onChange={() => toggle("scheduledRun")} />} />
+        <CardRow label="Error Alerts" description="Show errors immediately" control={<Toggle checked={settings.errorAlerts} onChange={() => toggle("errorAlerts")} />} />
       </Card>
     </div>
   );
@@ -200,8 +215,8 @@ function PrivacySection() {
       <Card>
         <CardHeader>Privacy</CardHeader>
         <CardDescription>Control data collection and storage.</CardDescription>
-        <CardRow label="Usage Analytics" description="Send anonymous usage data" control={<Toggle checked={false} onChange={() => {}} />} />
-        <CardRow label="Log to File" description="Write operation logs to disk" control={<Toggle checked={true} onChange={() => {}} />} />
+        <CardRow label="Usage Analytics" description="Not yet implemented" control={<Toggle checked={false} onChange={() => {}} disabled />} />
+        <CardRow label="Log to File" description="Write operation logs to disk (always enabled)" control={<Toggle checked={true} onChange={() => {}} disabled />} />
       </Card>
     </div>
   );
@@ -222,7 +237,7 @@ function AboutSection() {
       <Card>
         <CardHeader>About AFO</CardHeader>
         <CardDescription>Advanced File Organizer</CardDescription>
-        <CardRow label="Version" rightValue="2.5.1" />
+        <CardRow label="Version" rightValue="2.5.3" />
         <CardRow label="Build" rightValue="2026-07-21" />
         <CardRow label="Engine" rightValue="Tauri v2 + Rust" />
         <CardRow label="License" rightValue="MIT" />

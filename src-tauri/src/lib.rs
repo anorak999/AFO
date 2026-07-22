@@ -36,6 +36,22 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // Initialize journal
+            if let Err(e) = core::journal::init_journal() {
+                tracing::error!(error = %e, "Failed to initialize journal");
+            }
+
+            // Initialize scheduler
+            if let Err(e) = core::scheduler::init_scheduler() {
+                tracing::error!(error = %e, "Failed to initialize scheduler");
+            }
+
+            // Start scheduler cron loop
+            let app_handle_scheduler = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                core::scheduler::start_scheduler_loop(app_handle_scheduler).await;
+            });
+
             // Initialize watcher with channel
             let (tx, mut rx) = mpsc::channel::<String>(100);
 

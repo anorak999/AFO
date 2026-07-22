@@ -24,8 +24,8 @@ export async function organizeByExtension(path: string, dryRun: boolean): Promis
   return invoke<OrganizeResult>("organize_by_extension", { path, dryRun });
 }
 
-export async function organizeByDate(path: string, dryRun: boolean): Promise<OrganizeResult> {
-  return invoke<OrganizeResult>("organize_by_date", { path, dryRun });
+export async function organizeByDate(path: string, dryRun: boolean, dateFormat?: string): Promise<OrganizeResult> {
+  return invoke<OrganizeResult>("organize_by_date", { path, dryRun, dateFormat: dateFormat ?? "yearmonth" });
 }
 
 export async function batchRename(

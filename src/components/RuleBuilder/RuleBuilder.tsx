@@ -4,6 +4,7 @@ import { listRules, saveRules, applyRules, type Rule, type RuleCondition, type R
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
+import RuleFlowEditor from "./RuleFlowEditor";
 
 function emptyCondition(): RuleCondition { return { field: "Extension", operator: "Contains", value: "" }; }
 function emptyAction(): RuleAction { return { Move: { destination: "" } }; }
@@ -22,6 +23,7 @@ export default function RuleBuilder() {
   const [formActions, setFormActions] = useState<RuleAction[]>([emptyAction()]);
   const [dryRunPath, setDryRunPath] = useState("");
   const [dryRunResult, setDryRunResult] = useState("");
+  const [useVisualEditor, setUseVisualEditor] = useState(false);
 
   const refresh = useCallback(async () => { try { setRules(await listRules()); } catch (e) { setError(String(e)); } }, []);
   useEffect(() => { refresh().finally(() => setLoading(false)); }, [refresh]);
@@ -69,8 +71,8 @@ export default function RuleBuilder() {
       <Card>
         <CardHeader>Rule Builder Settings</CardHeader>
         <CardDescription>Configure how the rule builder behaves.</CardDescription>
-        <CardRow label="Visual Rule Editor" description="Use node-based flow editor" control={<Toggle checked={false} onChange={() => {}} />} />
-        <CardRow label="Live Preview" description="Show real-time preview of rule matches" control={<Toggle checked={true} onChange={() => {}} />} />
+        <CardRow label="Visual Rule Editor" description="Use node-based flow editor" control={<Toggle checked={useVisualEditor} onChange={setUseVisualEditor} />} />
+        <CardRow label="Live Preview" description="Not yet connected to backend" control={<Toggle checked={true} onChange={() => {}} disabled />} />
       </Card>
 
       {/* Quick Actions */}
@@ -84,29 +86,83 @@ export default function RuleBuilder() {
         <Card><p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>No rules yet. Create one to get started.</p></Card>
       ) : (
         <div className="space-y-2">
-          {rules.map((rule) => editing === rule.id ? (
-            <Card key={rule.id}>
-              <div className="space-y-3">
-                <div><label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Rule Name</label>
-                  <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Organize images" className={`w-full ${inputCls}`} style={inputStyle} /></div>
-                <div><label className="mb-2 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Conditions</label>
-                  {formConditions.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 mb-2">
-                      <select value={c.field} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, field: e.target.value as RuleCondition["field"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
-                        {["Extension", "Name", "Size", "DateCreated", "DateModified"].map((f) => <option key={f}>{f}</option>)}
-                      </select>
-                      <select value={c.operator} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, operator: e.target.value as RuleCondition["operator"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
-                        {["Equals", "Contains", "StartsWith", "EndsWith", "GreaterThan", "LessThan", "Regex"].map((o) => <option key={o}>{o}</option>)}
-                      </select>
-                      <input type="text" value={c.value} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className={`min-w-0 flex-1 ${inputCls}`} style={inputStyle} />
-                      {formConditions.length > 1 && <button onClick={() => setFormConditions((prev) => prev.filter((_, j) => j !== i))} style={{ color: "var(--text-tertiary)" }}><Trash2 size={12} /></button>}
-                    </div>
-                  ))}
-                  <button onClick={() => setFormConditions((prev) => [...prev, emptyCondition()])} className="text-xs" style={{ color: "var(--accent)" }}>+ Add Condition</button>
+          {/* New rule form (above existing rules) */}
+          {editing === "new" && (
+            useVisualEditor ? (
+              <Card>
+                <RuleFlowEditor
+                  rule={{ id: "", name: formName || "New Rule", enabled: true, conditions: [], actions: [] }}
+                  onSave={(conditions, actions) => {
+                    const newRule = { id: makeId(), name: formName.trim() || "New Rule", enabled: true, conditions, actions };
+                    const updated = [...rules, newRule];
+                    saveRules(updated).then(() => { setRules(updated); setEditing(null); }).catch((e) => setError(String(e)));
+                  }}
+                  onCancel={cancel}
+                />
+              </Card>
+            ) : (
+              <Card>
+                <div className="space-y-3">
+                  <div><label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Rule Name</label>
+                    <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Organize images" className={`w-full ${inputCls}`} style={inputStyle} /></div>
+                  <div><label className="mb-2 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Conditions</label>
+                    {formConditions.map((c, i) => (
+                      <div key={i} className="flex items-center gap-2 mb-2">
+                        <select value={c.field} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, field: e.target.value as RuleCondition["field"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
+                          {["Extension", "Name", "Size", "DateCreated", "DateModified"].map((f) => <option key={f}>{f}</option>)}
+                        </select>
+                        <select value={c.operator} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, operator: e.target.value as RuleCondition["operator"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
+                          {["Equals", "Contains", "StartsWith", "EndsWith", "GreaterThan", "LessThan", "Regex"].map((o) => <option key={o}>{o}</option>)}
+                        </select>
+                        <input type="text" value={c.value} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className={`min-w-0 flex-1 ${inputCls}`} style={inputStyle} />
+                        {formConditions.length > 1 && <button onClick={() => setFormConditions((prev) => prev.filter((_, j) => j !== i))} style={{ color: "var(--text-tertiary)" }}><Trash2 size={12} /></button>}
+                      </div>
+                    ))}
+                    <button onClick={() => setFormConditions((prev) => [...prev, emptyCondition()])} className="text-xs" style={{ color: "var(--accent)" }}>+ Add Condition</button>
+                  </div>
+                  <div className="flex gap-2"><Button onClick={handleSave}>Save Rule</Button><Button variant="secondary" onClick={cancel}>Cancel</Button></div>
                 </div>
-                <div className="flex gap-2"><Button onClick={handleSave}>Save Rule</Button><Button variant="secondary" onClick={cancel}>Cancel</Button></div>
-              </div>
-            </Card>
+              </Card>
+            )
+          )}
+
+          {/* Existing rules */}
+          {rules.map((rule) => editing === rule.id ? (
+            useVisualEditor ? (
+              <Card key={rule.id}>
+                <RuleFlowEditor
+                  rule={rule}
+                  onSave={(conditions, actions) => {
+                    const updated = rules.map((r) => r.id === editing ? { ...r, name: formName.trim() || rule.name, conditions, actions } : r);
+                    saveRules(updated).then(() => { setRules(updated); setEditing(null); }).catch((e) => setError(String(e)));
+                  }}
+                  onCancel={cancel}
+                />
+              </Card>
+            ) : (
+              <Card key={rule.id}>
+                <div className="space-y-3">
+                  <div><label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Rule Name</label>
+                    <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Organize images" className={`w-full ${inputCls}`} style={inputStyle} /></div>
+                  <div><label className="mb-2 block text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Conditions</label>
+                    {formConditions.map((c, i) => (
+                      <div key={i} className="flex items-center gap-2 mb-2">
+                        <select value={c.field} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, field: e.target.value as RuleCondition["field"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
+                          {["Extension", "Name", "Size", "DateCreated", "DateModified"].map((f) => <option key={f}>{f}</option>)}
+                        </select>
+                        <select value={c.operator} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, operator: e.target.value as RuleCondition["operator"] } : x))} className={`rounded-lg px-2 py-1.5 text-sm ${inputCls}`} style={inputStyle}>
+                          {["Equals", "Contains", "StartsWith", "EndsWith", "GreaterThan", "LessThan", "Regex"].map((o) => <option key={o}>{o}</option>)}
+                        </select>
+                        <input type="text" value={c.value} onChange={(e) => setFormConditions((prev) => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" className={`min-w-0 flex-1 ${inputCls}`} style={inputStyle} />
+                        {formConditions.length > 1 && <button onClick={() => setFormConditions((prev) => prev.filter((_, j) => j !== i))} style={{ color: "var(--text-tertiary)" }}><Trash2 size={12} /></button>}
+                      </div>
+                    ))}
+                    <button onClick={() => setFormConditions((prev) => [...prev, emptyCondition()])} className="text-xs" style={{ color: "var(--accent)" }}>+ Add Condition</button>
+                  </div>
+                  <div className="flex gap-2"><Button onClick={handleSave}>Save Rule</Button><Button variant="secondary" onClick={cancel}>Cancel</Button></div>
+                </div>
+              </Card>
+            )
           ) : (
             <Card key={rule.id}>
               <div className="flex items-center gap-4">

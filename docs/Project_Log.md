@@ -803,3 +803,47 @@ Settings > General > Appearance used a Light/Dark `<SegmentedControl>` which cau
 
 ### Build Verification
 - `npx tsc --noEmit` — ✅ Clean
+
+## 2026-07-22 — v2.5.3: Dead Feature Remediation
+
+### Overview
+Comprehensive pass to wire all 13 dead features identified in the Feature Status Audit. Every previously-silent stub is now either fully functional or explicitly disabled in the UI.
+
+### Priority 1: Runtime-breaking fixes (init never called)
+1. **Journal init** — `init_journal()` now called in `lib.rs` setup hook. Undo/redo operations that previously failed at runtime with "Journal not initialized" now work correctly.
+2. **Scheduler init** — `init_scheduler()` now called in setup hook. Schedule CRUD that previously failed with "Scheduler not initialized" now works.
+3. **Scheduler cron loop** — New `start_scheduler_loop()` function in `scheduler.rs` spawns a 60-second background interval that evaluates enabled schedules against their cron expressions. Includes a field-by-field cron matcher supporting `*`, `N`, `N-M`, `N/S`, and `N,M,O` patterns.
+
+### Priority 2: Stub UI wired to nothing
+4. **Command Palette Undo/Redo** — Wired to `undoLast()`/`redoLast()` from tauri-bridge with toast feedback. Dead "Scan Current Directory" placeholder replaced with "Go to Organize" navigation.
+5. **Settings toggles** — Notification toggles (Operation Complete, Scheduled Run, Error Alerts) now persist to localStorage. Privacy toggles (Usage Analytics, Log to File) disabled with descriptive tooltip text.
+6. **Hash algorithm selector** — Removed decorative BLAKE3/SHA-256/MD5 segmented control from Duplicates panel. Replaced with static "Hash Algorithm: BLAKE3" info row.
+7. **Date format** — `dateFormat` parameter threaded from OrganizePanel → tauri-bridge → `organize_by_date` command. "Full Date" option now produces `YYYY/MM/DD` folder structure vs `YYYY/MM`.
+8. **EXIF dates in organize-by-date** — `organize_by_date` command now calls `get_file_date()` which prefers EXIF date taken, falls back to filesystem timestamps. Previously used only filesystem mtime.
+
+### Priority 3: Dead code decisions
+9. **RuleFlowEditor** — Imported and wired into RuleBuilder via "Visual Rule Editor" toggle. Handles both new rule creation and editing existing rules. Extracts valid `RuleCondition[]` and `RuleAction[]` from node graph.
+
+### Additional fixes
+- **History Panel** — "Keep Full History" toggle disabled (always on, no backend to wire to)
+- **RuleBuilder** — "Live Preview" toggle disabled with descriptive text (no backend connection)
+
+### Files Modified
+- `src-tauri/src/lib.rs` — Added journal::init_journal(), scheduler::init_scheduler(), scheduler cron loop spawn
+- `src-tauri/src/core/scheduler.rs` — Added cron field matcher, matches_cron(), start_scheduler_loop() background task
+- `src-tauri/src/core/organizer.rs` — Made get_file_date() pub(crate)
+- `src-tauri/src/commands.rs` — Added date_format param to organize_by_date, uses get_file_date() for EXIF support
+- `src/components/CommandPalette/CommandPalette.tsx` — Wired Undo/Redo, replaced Scan with nav
+- `src/components/SettingsPanel/SettingsPanel.tsx` — Persisted notification toggles, disabled non-functional toggles
+- `src/components/DuplicatesPanel/DuplicatesPanel.tsx` — Removed hash algorithm selector, cleaned unused state
+- `src/components/OrganizePanel/OrganizePanel.tsx` — Passes dateFormat to organizeByDate
+- `src/components/RuleBuilder/RuleBuilder.tsx` — Imported RuleFlowEditor, wired visual editor toggle
+- `src/components/HistoryPanel/HistoryPanel.tsx` — Disabled Keep Full History toggle
+- `src/lib/tauri-bridge.ts` — Updated organizeByDate signature with dateFormat param
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+
+### Version
+- Bumped to 2.5.3 in package.json, Cargo.toml, tauri.conf.json, Sidebar, SettingsPanel

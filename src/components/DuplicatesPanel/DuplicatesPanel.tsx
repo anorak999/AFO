@@ -4,7 +4,6 @@ import { scanDuplicates, quarantineDuplicates, deleteDuplicates, type DuplicateG
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
-import SegmentedControl from "../ui/SegmentedControl";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -23,9 +22,6 @@ export default function DuplicatesPanel() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<Map<number, Set<number>>>(new Map());
   const [actionError, setActionError] = useState("");
-  const [autoQuarantine, setAutoQuarantine] = useState(false);
-  const [preserveFirst, setPreserveFirst] = useState(true);
-  const [hashAlgo, setHashAlgo] = useState("BLAKE3");
 
   async function pickDirectory() {
     try {
@@ -84,15 +80,7 @@ export default function DuplicatesPanel() {
         <CardDescription>Configure how duplicates are detected.</CardDescription>
         <CardRow label="Recursive" description="Scan subdirectories" control={<Toggle checked={recursive} onChange={setRecursive} />} />
         {recursive && <CardRow label="Max Depth" control={<input type="number" min={1} max={20} value={maxDepth} onChange={(e) => setMaxDepth(Number(e.target.value) || 5)} className="w-16 rounded-lg px-2 py-1 text-sm text-center" style={{ backgroundColor: "var(--bg-inset)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }} />} />}
-        <CardRow label="Auto-Quarantine" description="Automatically quarantine duplicates" control={<Toggle checked={autoQuarantine} onChange={setAutoQuarantine} />} />
-        <CardRow label="Preserve First Occurrence" description="Keep the first file found" control={<Toggle checked={preserveFirst} onChange={setPreserveFirst} />} />
-      </Card>
-
-      {/* Hashing Algorithm */}
-      <Card>
-        <CardHeader>Hashing Algorithm</CardHeader>
-        <CardDescription>Algorithm used for file fingerprinting.</CardDescription>
-        <SegmentedControl options={["BLAKE3", "SHA-256", "MD5"]} value={hashAlgo} onChange={setHashAlgo} layoutId="duplicates-hash" />
+        <CardRow label="Hash Algorithm" rightValue="BLAKE3" />
       </Card>
 
       {/* Quick Actions */}
