@@ -26,10 +26,10 @@ export default function HistoryPanel() {
   const refresh = useCallback(async (off = 0, append = false) => {
     try { const batch = await getHistory(PAGE_SIZE, off); setEntries((p) => (append ? [...p, ...batch] : batch)); setHasMore(batch.length === PAGE_SIZE); }
     catch (e) { setError(String(e)); }
+    setLoading(false);
   }, []);
 
   useEffect(() => { refresh(0); }, [refresh]);
-  useEffect(() => { if (entries.length > 0 || error) setLoading(false); }, [entries, error]);
 
   async function handleLoadMore() { const next = offset + PAGE_SIZE; setOffset(next); await refresh(next, true); }
   async function handleUndoLast() { setActing(true); try { await undoLast(); setOffset(0); await refresh(0); } catch (e) { setError(String(e)); } finally { setActing(false); } }
