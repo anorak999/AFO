@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Zap } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { listRules, saveRules, applyRules, type Rule, type RuleCondition, type RuleAction } from "../../lib/tauri-bridge";
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
@@ -73,12 +73,6 @@ export default function RuleBuilder() {
         <CardDescription>Configure how the rule builder behaves.</CardDescription>
         <CardRow label="Visual Rule Editor" description="Use node-based flow editor" control={<Toggle checked={useVisualEditor} onChange={setUseVisualEditor} />} />
         <CardRow label="Live Preview" description="Not yet connected to backend" control={<Toggle checked={true} onChange={() => {}} disabled />} />
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>Quick Actions</CardHeader>
-        <Button onClick={startCreate} className="w-full gap-2"><Zap size={14} /> Create New Rule</Button>
       </Card>
 
       {/* Rules List */}
