@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, FolderOpen } from "lucide-react";
+import { Plus, Trash2, FolderOpen, Sparkles } from "lucide-react";
 import { listRules, saveRules, applyRules, type Rule, type RuleCondition, type RuleAction } from "../../lib/tauri-bridge";
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
@@ -9,6 +9,76 @@ import RuleFlowEditor from "./RuleFlowEditor";
 function emptyCondition(): RuleCondition { return { field: "Extension", operator: "Contains", value: "" }; }
 function emptyAction(): RuleAction { return { Move: { destination: "" } }; }
 function makeId(): string { return crypto.randomUUID(); }
+
+interface PresetRule {
+  name: string;
+  description: string;
+  conditions: RuleCondition[];
+  actions: RuleAction[];
+}
+
+const PRESET_RULES: PresetRule[] = [
+  {
+    name: "Organize Images",
+    description: "Move image files to an Images folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg,.ico" }],
+    actions: [{ Move: { destination: "~/Images" } }],
+  },
+  {
+    name: "Organize Documents",
+    description: "Move documents to a Documents folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".pdf,.doc,.docx,.txt,.rtf,.odt,.xls,.xlsx,.ppt,.pptx,.csv" }],
+    actions: [{ Move: { destination: "~/Documents" } }],
+  },
+  {
+    name: "Organize Videos",
+    description: "Move video files to a Videos folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".mp4,.avi,.mkv,.mov,.wmv,.flv,.webm,.m4v" }],
+    actions: [{ Move: { destination: "~/Videos" } }],
+  },
+  {
+    name: "Organize Music",
+    description: "Move audio files to a Music folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".mp3,.wav,.flac,.aac,.ogg,.wma,.m4a,.opus" }],
+    actions: [{ Move: { destination: "~/Music" } }],
+  },
+  {
+    name: "Archive Old Files",
+    description: "Move files older than 90 days to Archives",
+    conditions: [{ field: "DateModified", operator: "LessThan", value: "90" }],
+    actions: [{ Move: { destination: "~/Archives" } }],
+  },
+  {
+    name: "Sort by Date (Year/Month)",
+    description: "Organize files into year/month folders based on creation date",
+    conditions: [{ field: "Extension", operator: "Contains", value: "." }],
+    actions: [{ Move: { destination: "~/Sorted/{year}/{month}" } }],
+  },
+  {
+    name: "Catch Downloads",
+    description: "Move downloaded installers and archives to Downloads sorted folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".exe,.msi,.dmg,.pkg,.deb,.rpm,.zip,.tar,.gz,.rar,.7z" }],
+    actions: [{ Move: { destination: "~/Downloads/Installers" } }],
+  },
+  {
+    name: "Organize Screenshots",
+    description: "Move screenshots to a dedicated folder",
+    conditions: [{ field: "Name", operator: "Contains", value: "screenshot,Screen Shot,Snip" }],
+    actions: [{ Move: { destination: "~/Pictures/Screenshots" } }],
+  },
+  {
+    name: "Sort Large Files",
+    description: "Move files larger than 100MB to Large Files folder",
+    conditions: [{ field: "Size", operator: "GreaterThan", value: "104857600" }],
+    actions: [{ Move: { destination: "~/Large Files" } }],
+  },
+  {
+    name: "Organize Code Files",
+    description: "Move source code files to a Code folder",
+    conditions: [{ field: "Extension", operator: "Equals", value: ".py,.js,.ts,.jsx,.tsx,.java,.c,.cpp,.h,.rs,.go,.rb,.php,.html,.css,.json,.yaml,.yml,.toml" }],
+    actions: [{ Move: { destination: "~/Code" } }],
+  },
+];
 
 const inputCls = "rounded-lg px-3 py-1.5 text-sm outline-none";
 const inputStyle = { backgroundColor: "var(--bg-inset)", border: "1px solid var(--border-default)", color: "var(--text-primary)" };
@@ -55,6 +125,14 @@ export default function RuleBuilder() {
     try { const res = await applyRules(dryRunPath, true); setDryRunResult(`${res.moved} files affected (${res.skipped} skipped, ${res.errors.length} errors)`); } catch (e) { setDryRunResult(`Error: ${e}`); }
   }
 
+  function addPreset(preset: PresetRule) {
+    const newRule: Rule = { id: makeId(), name: preset.name, enabled: true, conditions: preset.conditions, actions: preset.actions };
+    const updated = [...rules, newRule];
+    saveRules(updated).then(() => setRules(updated)).catch((e) => setError(String(e)));
+  }
+
+  const addedPresetNames = new Set(rules.map((r) => r.name));
+
   if (loading) return <div className="p-6"><h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Rule Builder</h1><p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>Loading rules...</p></div>;
 
   return (
@@ -73,6 +151,38 @@ export default function RuleBuilder() {
         <CardDescription>Configure how the rule builder behaves.</CardDescription>
         <CardRow label="Visual Rule Editor" description="Use node-based flow editor" control={<Toggle checked={useVisualEditor} onChange={setUseVisualEditor} />} />
         <CardRow label="Live Preview" description="Not yet connected to backend" control={<Toggle checked={true} onChange={() => {}} disabled />} />
+      </Card>
+
+      {/* Preset Rules */}
+      <Card>
+        <CardHeader>
+          <span className="flex items-center gap-2"><Sparkles size={14} style={{ color: "var(--accent)" }} /> Preset Rules</span>
+        </CardHeader>
+        <CardDescription>Quick-start templates for common file organization tasks. Click to add.</CardDescription>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {PRESET_RULES.map((preset) => {
+            const added = addedPresetNames.has(preset.name);
+            return (
+              <button
+                key={preset.name}
+                onClick={() => !added && addPreset(preset)}
+                disabled={added}
+                className="flex flex-col items-start rounded-lg px-3 py-2 text-left transition-colors"
+                style={{
+                  backgroundColor: "var(--bg-inset)",
+                  border: "1px solid var(--border-default)",
+                  opacity: added ? 0.5 : 1,
+                  cursor: added ? "default" : "pointer",
+                }}
+              >
+                <span className="text-xs font-medium" style={{ color: added ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                  {added ? "✓ " : ""}{preset.name}
+                </span>
+                <span className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{preset.description}</span>
+              </button>
+            );
+          })}
+        </div>
       </Card>
 
       {/* Rules List */}
