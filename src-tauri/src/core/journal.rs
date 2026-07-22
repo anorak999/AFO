@@ -102,7 +102,6 @@ pub fn get_history(limit: i64, offset: i64) -> Result<Vec<JournalEntry>, String>
             .prepare(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
                  FROM operations
-                 WHERE reverted = 0
                  ORDER BY timestamp DESC
                  LIMIT ?1 OFFSET ?2",
             )

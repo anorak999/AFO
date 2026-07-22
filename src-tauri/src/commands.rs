@@ -78,7 +78,18 @@ pub async fn organize_by_extension(
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
             match retry_move(std::path::Path::new(&file.path), &target_file) {
-                Ok(()) => result.moved += 1,
+                Ok(()) => {
+                    result.moved += 1;
+                    let entry = journal::JournalEntry {
+                        id: 0,
+                        operation_type: "move".to_string(),
+                        source_path: file.path.clone(),
+                        dest_path: target_file.to_string_lossy().to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        reverted: false,
+                    };
+                    let _ = journal::record_operation(&entry);
+                }
                 Err(e) => {
                     if is_permission_denied(&e) {
                         warn!(error = %e, file = %file.name, "Permission denied moving file");
@@ -170,7 +181,18 @@ pub async fn organize_by_date(
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
             match retry_move(std::path::Path::new(&file.path), &target_file) {
-                Ok(()) => result.moved += 1,
+                Ok(()) => {
+                    result.moved += 1;
+                    let entry = journal::JournalEntry {
+                        id: 0,
+                        operation_type: "move".to_string(),
+                        source_path: file.path.clone(),
+                        dest_path: target_file.to_string_lossy().to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        reverted: false,
+                    };
+                    let _ = journal::record_operation(&entry);
+                }
                 Err(e) => {
                     if is_permission_denied(&e) {
                         warn!(error = %e, file = %file.name, "Permission denied moving file");
@@ -248,7 +270,18 @@ pub async fn batch_rename(
         } else {
             let target = organizer::unique_path(&new_path);
             match retry_move(std::path::Path::new(&file.path), &target) {
-                Ok(()) => result.moved += 1,
+                Ok(()) => {
+                    result.moved += 1;
+                    let entry = journal::JournalEntry {
+                        id: 0,
+                        operation_type: "rename".to_string(),
+                        source_path: file.path.clone(),
+                        dest_path: target.to_string_lossy().to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        reverted: false,
+                    };
+                    let _ = journal::record_operation(&entry);
+                }
                 Err(e) => {
                     if is_permission_denied(&e) {
                         warn!(error = %e, file = %file.name, "Permission denied renaming file");
