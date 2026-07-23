@@ -73,9 +73,22 @@ export default function App() {
       },
     );
 
+    const unlistenFileChange = listen<{ source: string; filename?: string; watched_dir?: string; change_type?: string }>(
+      "afo://file-change",
+      (event) => {
+        const { filename, change_type } = event.payload;
+        const name = filename || event.payload.source.split(/[\\/]/).pop() || event.payload.source;
+        const label = change_type === "pending" ? "Pending approval" :
+                      change_type === "captured" ? "Captured" :
+                      change_type === "auto_organize" ? "Auto-organized" : "File change";
+        showToast(`${label}: "${name}"`, "info");
+      },
+    );
+
     return () => {
       unlistenActivity.then((fn) => fn());
       unlistenPending.then((fn) => fn());
+      unlistenFileChange.then((fn) => fn());
     };
   }, []);
 

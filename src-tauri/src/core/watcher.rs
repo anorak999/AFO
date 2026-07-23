@@ -174,6 +174,7 @@ pub async fn process_file_event(
     // This runs AFTER debounce, BEFORE rule evaluation. It decides whether
     // to auto-organize, queue for approval, or just index the file.
     let watched_dir = find_watched_dir_for_path(path);
+    let mut capture_result: Option<crate::core::capture::HandleResult> = None;
     if let Some(ref dir) = watched_dir {
         tracing::info!(path = path, dir = dir, "Capture hook: checking capture mode");
         match crate::core::capture::handle_file_event(path, "modify", dir) {
@@ -192,15 +193,16 @@ pub async fn process_file_event(
                     }),
                 );
                 info!(path = path, dir = dir, "File queued for approval (NotifyOnly mode)");
-                return Ok(());
+                capture_result = Some(crate::core::capture::HandleResult::QueuedForApproval);
             }
             Ok(crate::core::capture::HandleResult::Captured) => {
                 // File indexed (FullCapture mode) — skip rule evaluation
                 info!(path = path, dir = dir, "File captured and indexed (FullCapture mode)");
-                return Ok(());
+                capture_result = Some(crate::core::capture::HandleResult::Captured);
             }
             Ok(crate::core::capture::HandleResult::AutoOrganized) => {
                 // Proceed with existing rule evaluation (unchanged behavior)
+                capture_result = Some(crate::core::capture::HandleResult::AutoOrganized);
             }
             Ok(crate::core::capture::HandleResult::Skipped) => {
                 // No capture config — proceed with existing behavior
@@ -209,6 +211,39 @@ pub async fn process_file_event(
                 warn!(error = %e, path = path, "Capture hook failed, falling back to normal flow");
             }
         }
+    }
+
+    // Emit generic file-change event for ALL watched-directory changes
+    // so the frontend can show a live toast regardless of capture mode.
+    if let Some(ref dir) = watched_dir {
+        let filename = std::path::Path::new(path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let change_type = match capture_result {
+            Some(crate::core::capture::HandleResult::QueuedForApproval) => "pending",
+            Some(crate::core::capture::HandleResult::Captured) => "captured",
+            Some(crate::core::capture::HandleResult::AutoOrganized) => "auto_organize",
+            _ => "detected",
+        };
+        let _ = app.emit(
+            "afo://file-change",
+            serde_json::json!({
+                "source": path,
+                "filename": filename,
+                "watched_dir": dir,
+                "change_type": change_type,
+            }),
+        );
+    }
+
+    // If capture hook handled it (queued/captured/auto-organized), skip rule evaluation
+    if matches!(
+        capture_result,
+        Some(crate::core::capture::HandleResult::QueuedForApproval)
+            | Some(crate::core::capture::HandleResult::Captured)
+    ) {
+        return Ok(());
     }
 
     // ── Issue #5 fix: Cache rules in a thread-local to avoid disk reads ───
