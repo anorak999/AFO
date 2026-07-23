@@ -56,7 +56,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    const unlisten = listen<{ type: string; source: string; destination?: string; rule?: string }>(
+    const unlistenActivity = listen<{ type: string; source: string; destination?: string; rule?: string }>(
       "afo://activity",
       (event) => {
         const { type, source, destination, rule } = event.payload;
@@ -69,7 +69,20 @@ export default function App() {
         }
       },
     );
-    return () => { unlisten.then((fn) => fn()); };
+
+    const unlistenPending = listen<{ source: string; filename?: string; watched_dir?: string }>(
+      "afo://pending-action",
+      (event) => {
+        const { source } = event.payload;
+        const filename = source.split(/[\\/]/).pop() || source;
+        showToast(`Pending approval: "${filename}" — check Live Capture tab`, "info");
+      },
+    );
+
+    return () => {
+      unlistenActivity.then((fn) => fn());
+      unlistenPending.then((fn) => fn());
+    };
   }, []);
 
   return (

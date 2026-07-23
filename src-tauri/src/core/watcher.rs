@@ -165,6 +165,46 @@ pub async fn process_file_event(
         state.last_events.insert(path.to_string(), Instant::now());
     }
 
+    // ── Live Capture hook: check capture mode before rule evaluation ──
+    // This runs AFTER debounce, BEFORE rule evaluation. It decides whether
+    // to auto-organize, queue for approval, or just index the file.
+    let watched_dir = find_watched_dir_for_path(path);
+    if let Some(ref dir) = watched_dir {
+        match crate::core::capture::handle_file_event(path, "modify", dir) {
+            Ok(crate::core::capture::HandleResult::QueuedForApproval) => {
+                // File queued for approval — emit event, skip rule evaluation
+                let filename = std::path::Path::new(path)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let _ = app.emit(
+                    "afo://pending-action",
+                    serde_json::json!({
+                        "source": path,
+                        "filename": filename,
+                        "watched_dir": dir,
+                    }),
+                );
+                info!(path = path, dir = dir, "File queued for approval (NotifyOnly mode)");
+                return Ok(());
+            }
+            Ok(crate::core::capture::HandleResult::Captured) => {
+                // File indexed (FullCapture mode) — skip rule evaluation
+                info!(path = path, dir = dir, "File captured and indexed (FullCapture mode)");
+                return Ok(());
+            }
+            Ok(crate::core::capture::HandleResult::AutoOrganized) => {
+                // Proceed with existing rule evaluation (unchanged behavior)
+            }
+            Ok(crate::core::capture::HandleResult::Skipped) => {
+                // No capture config — proceed with existing behavior
+            }
+            Err(e) => {
+                warn!(error = %e, path = path, "Capture hook failed, falling back to normal flow");
+            }
+        }
+    }
+
     // ── Issue #5 fix: Cache rules in a thread-local to avoid disk reads ───
     // Before: load_rules() was called on every file event, triggering a disk
     // read + JSON parse per event. During bulk copy of 100 files, that's 100
@@ -407,10 +447,8 @@ pub fn find_watched_dir_for_path(path: &str) -> Option<String> {
     .flatten()
 }
 
-/// Queue a file move for user approval (called from capture module)
-pub fn queue_move_for_approval(path: &str, watched_dir: &str) -> Result<(), String> {
-    // This is a placeholder — the actual pending action is created in capture.rs
-    // This function exists so the watcher module can be called from capture
-    let _ = crate::core::capture::log_file_change(path, "pending_move", None, watched_dir, None);
+/// Queue a file move for user approval (placeholder — capture.rs handles this)
+pub fn queue_move_for_approval(_path: &str, _watched_dir: &str) -> Result<(), String> {
+    // Capture module creates pending actions directly via queue_pending_action()
     Ok(())
 }

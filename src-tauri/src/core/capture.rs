@@ -778,8 +778,13 @@ pub fn handle_file_event(
             Ok(HandleResult::Captured)
         }
         CaptureMode::NotifyOnly => {
-            // Queue for approval (rule matching happens in watcher.rs)
-            let _ = crate::core::watcher::queue_move_for_approval(path, watched_dir);
+            // Create a pending action for this file
+            // The dest_path is computed from the first matching rule in watcher.rs
+            // For now, queue with a placeholder dest that will be updated when rule matches
+            let p = Path::new(path);
+            let filename = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let placeholder_dest = format!("{}/{}", watched_dir, filename);
+            let _ = queue_pending_action(path, &placeholder_dest, "move", None, watched_dir);
             Ok(HandleResult::QueuedForApproval)
         }
         CaptureMode::AutoOrganize => Ok(HandleResult::AutoOrganized),
