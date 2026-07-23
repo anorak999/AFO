@@ -47,7 +47,9 @@ where
 }
 
 pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel::<String>(100);
+    // Use unbounded channel so the notify callback can send without a Tokio runtime.
+    // bounded channels require blocking_send which needs a runtime on the calling thread.
+    let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
     let watcher = RecommendedWatcher::new(
         move |res: Result<Event, notify::Error>| {
@@ -65,7 +67,7 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
                                     path = %path_str,
                                     "Watcher event"
                                 );
-                                let _ = watcher_tx.blocking_send(path_str);
+                                let _ = watcher_tx.send(path_str);
                             }
                         }
                     }
