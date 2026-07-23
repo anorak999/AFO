@@ -210,7 +210,7 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - Code verified structurally; standalone rustc check confirms only crate-linkage errors (expected)
 - Commit: `6ab1abd` feat: implement rule engine with condition/action evaluation, IPC commands
 
-## 2025-07-21 — Duplicate Detection Implementation
+### Phase 4: Duplicate Detection Implementation
 
 ### Changes
 - Implemented full duplicate detection in `src-tauri/src/core/duplicates.rs` (replaced 7-line stub with 229 lines)
@@ -642,7 +642,7 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 - All three organize commands (`extension`, `date`, `rename`) now use `retry_move` with per-file error handling
 - Permission denied errors surfaced with "try running as administrator" hint
 - **organizer.rs**: `scan_directory()` now uses `symlink_metadata()` for correct symlink handling
-- `organizer.rs`: `unique_path()` replaced `unreachable!()` with graceful fallback using timestamp
+- **organizer.rs**: `unique_path()` replaced `unreachable!()` with graceful fallback using timestamp
 
 ### Cloud Sync Stub
 - **cloud_sync.rs**: Expanded from 7-line stub to full placeholder module
@@ -1081,3 +1081,63 @@ History panel stuck on "Loading..." on fresh install with empty journal database
 - Tag: `v2.5.47`
 - Artifacts: `AFO_2.5.47_amd64.deb` (~6.9 MB), `AFO-2.5.47-1.x86_64.rpm` (~6.9 MB)
 - GitHub release: https://github.com/anorak999/AFO/releases/tag/v2.5.47
+
+
+## 2026-07-23 — v2.5.48: Fix Double-Toast Bug in Auto-Organize Mode
+
+### Changes
+- `fix(watcher): prevent double-toast in auto-organize mode`
+  - Fixed issue where auto-organize mode would show two toasts for the same file operation:
+    1. "Auto-organized: filename" from the `afo://file-change` event listener
+    2. "Moved: filename → destination" from the `afo://activity` event listener
+  - Modified `process_file_event` in `watcher.rs` to conditionally suppress the `afo://activity` event when the capture result is `AutoOrganized`, since the file-change event already provides the appropriate toast
+  - Applied the same fix to copy and rename actions for consistency
+  - The `afo://file-change` event with `change_type: "auto_organize"` continues to show the "Auto-organized: filename" toast as intended
+
+### Files Modified
+- `src-tauri/src/core/watcher.rs` — suppressed duplicate activity events for auto-organize operations
+- `package.json` — version bump to 2.5.48
+- `src-tauri/package.json` — version bump to 2.5.48  
+- `src-tauri/Cargo.toml` — version bump to 2.5.48
+- `src-tauri/tauri.conf.json` — version bump to 2.5.48
+- `src/components/Sidebar/Sidebar.tsx` — updated version label in footer
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb,rpm` — ✅ Both packages built successfully
+
+### Release
+- Tag: `v2.5.48`
+- Artifacts: `AFO_2.5.48_amd64.deb` (~6.5 MB), `AFO-2.5.48-1.x86_64.rpm` (~6.5 MB)
+- GitHub release: https://github.com/anorak999/AFO/releases/tag/v2.5.48
+
+
+## 2026-07-23 — v2.5.49: Fix Notification Toast in Live Capture Mode
+
+### Changes
+- Fixed notification toast issue in live capture mode where toasts were not showing for file changes in watched directories.
+- Root cause: event name mismatch between Rust backend and TypeScript frontend.
+  - Backend was emitting `afo://file_change` (with underscore) while frontend listener was expecting `afo://file-change` (with hyphen) or vice versa.
+  - Standardized both sides to use `afo://file_change` (underscore) for consistency.
+- Modified `src-tauri/src/core/watcher.rs` to emit `afo://file_change` event for all watched-directory changes.
+- Modified `src/App.tsx` to listen for `afo://file_change` event and show appropriate toast based on capture mode.
+- Bumped version to 2.5.49 across all manifest files.
+
+### Files Modified
+- `src-tauri/src/core/watcher.rs` — corrected event emission to use `afo://file_change`
+- `src/App.tsx` — corrected event listener to use `afo://file_change`
+- `package.json` — version bump to 2.5.49
+- `src-tauri/Cargo.toml` — version bump to 2.5.49
+- `src-tauri/tauri.conf.json` — version bump to 2.5.49
+- `src/components/Sidebar/Sidebar.tsx` — updated version label in footer
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb,rpm` — ✅ Both packages built successfully
+
+### Release
+- Tag: `v2.5.49`
+- Artifacts: `AFO_2.5.49_amd64.deb` (~6.5 MB), `AFO-2.5.49-1.x86_64.rpm` (~6.5 MB)
+- GitHub release: https://github.com/anorak999/AFO/releases/tag/v2.5.49

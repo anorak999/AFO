@@ -79,7 +79,7 @@ export default function App() {
     // Single event handler for all Live Capture file changes (consolidated)
     // Replaces the separate afo://pending-action listener to prevent double-toasts.
     const unlistenFileChange = listen<{ source: string; filename?: string; watched_dir?: string; change_type?: string }>(
-      "afo://file-change",
+      "afo://file_change",
       (event) => {
         if (!isLiveCaptureEnabled()) return;
         const { filename, change_type } = event.payload;

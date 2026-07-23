@@ -227,7 +227,7 @@ pub async fn process_file_event(
             _ => "detected",
         };
         let _ = app.emit(
-            "afo://file-change",
+            "afo://file_change",
             serde_json::json!({
                 "source": path,
                 "filename": filename,
