@@ -4,6 +4,7 @@ import { useAppStore } from "./lib/store";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import Sidebar from "./components/Sidebar";
 import OrganizePanel from "./components/OrganizePanel";
+import LiveCapturePanel from "./components/LiveCapture";
 import RuleBuilder from "./components/RuleBuilder";
 import DuplicatesPanel from "./components/DuplicatesPanel";
 import HistoryPanel from "./components/HistoryPanel";
@@ -14,6 +15,7 @@ import DropZone from "./components/DropZone";
 
 const panels = {
   organize: OrganizePanel,
+  capture: LiveCapturePanel,
   rules: RuleBuilder,
   duplicates: DuplicatesPanel,
   history: HistoryPanel,

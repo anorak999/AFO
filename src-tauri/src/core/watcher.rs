@@ -372,3 +372,25 @@ pub fn list_watched() -> Result<Vec<WatchedDir>, String> {
         Ok(dirs)
     })
 }
+
+/// Find which watched directory contains the given path
+pub fn find_watched_dir_for_path(path: &str) -> Option<String> {
+    with_state(|state| {
+        for (dir, enabled) in &state.watched {
+            if *enabled && (path.starts_with(dir) || path.starts_with(&format!("{}/", dir))) {
+                return Ok(Some(dir.clone()));
+            }
+        }
+        Ok(None)
+    })
+    .ok()
+    .flatten()
+}
+
+/// Queue a file move for user approval (called from capture module)
+pub fn queue_move_for_approval(path: &str, watched_dir: &str) -> Result<(), String> {
+    // This is a placeholder — the actual pending action is created in capture.rs
+    // This function exists so the watcher module can be called from capture
+    let _ = crate::core::capture::log_file_change(path, "pending_move", None, watched_dir, None);
+    Ok(())
+}

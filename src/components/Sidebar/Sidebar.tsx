@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { FolderOpen, GitBranch, Copy, History, Settings } from "lucide-react";
+import { FolderOpen, GitBranch, Copy, History, Settings, Radio } from "lucide-react";
 import { useAppStore, type Panel } from "../../lib/store";
 import logo from "../../assets/logo.png";
 
 const NAV_ITEMS: { id: Panel; label: string; icon: typeof FolderOpen; cssVar: string }[] = [
   { id: "organize", label: "Organize", icon: FolderOpen, cssVar: "--icon-organize" },
+  { id: "capture", label: "Live Capture", icon: Radio, cssVar: "--icon-capture" },
   { id: "rules", label: "Rule Builder", icon: GitBranch, cssVar: "--icon-rules" },
   { id: "duplicates", label: "Duplicates", icon: Copy, cssVar: "--icon-duplicates" },
   { id: "history", label: "History", icon: History, cssVar: "--icon-history" },

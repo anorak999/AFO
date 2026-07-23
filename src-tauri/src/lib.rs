@@ -41,6 +41,11 @@ pub fn run() {
                 tracing::error!(error = %e, "Failed to initialize journal");
             }
 
+            // Initialize capture module (creates tables in journal.db)
+            if let Err(e) = core::capture::init_capture() {
+                tracing::error!(error = %e, "Failed to initialize capture");
+            }
+
             // Initialize scheduler
             if let Err(e) = core::scheduler::init_scheduler() {
                 tracing::error!(error = %e, "Failed to initialize scheduler");
@@ -105,6 +110,24 @@ pub fn run() {
             commands::cloud_list_providers,
             commands::cloud_sync_now,
             commands::ml_suggest_category,
+            // Capture commands
+            commands::get_capture_config,
+            commands::set_capture_mode_cmd,
+            commands::set_scan_interval_cmd,
+            commands::toggle_always_allow_cmd,
+            commands::set_dir_enabled_cmd,
+            commands::search_file_index,
+            commands::get_indexed_files_cmd,
+            commands::scan_and_index_cmd,
+            commands::get_file_history_cmd,
+            commands::get_recent_changes_cmd,
+            commands::get_pending_actions_cmd,
+            commands::approve_pending_action_cmd,
+            commands::reject_pending_action_cmd,
+            commands::approve_all_pending_cmd,
+            commands::reject_all_pending_cmd,
+            commands::get_capture_stats_cmd,
+            commands::get_dir_stats_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

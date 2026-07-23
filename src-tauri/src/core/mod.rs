@@ -1,3 +1,4 @@
+pub mod capture;
 pub mod cloud_sync;
 pub mod duplicates;
 pub mod journal;

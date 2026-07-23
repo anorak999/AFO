@@ -24,7 +24,7 @@ fn db_path() -> std::path::PathBuf {
     base.join("afo").join("journal.db")
 }
 
-fn with_db<F, R>(f: F) -> Result<R, String>
+pub fn with_connection<F, R>(f: F) -> Result<R, String>
 where
     F: FnOnce(&Connection) -> Result<R, String>,
 {
@@ -79,7 +79,7 @@ pub fn init_journal() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn record_operation(entry: &JournalEntry) -> Result<(), String> {
-    with_db(|db| {
+    with_connection(|db| {
         db.execute(
             "INSERT INTO operations (operation_type, source_path, dest_path, timestamp, reverted)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -97,7 +97,7 @@ pub fn record_operation(entry: &JournalEntry) -> Result<(), String> {
 }
 
 pub fn get_history(limit: i64, offset: i64) -> Result<Vec<JournalEntry>, String> {
-    with_db(|db| {
+    with_connection(|db| {
         let mut stmt = db
             .prepare(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -200,7 +200,7 @@ fn forward_operation(entry: &JournalEntry) -> Result<(), Box<dyn std::error::Err
 }
 
 pub fn undo_last() -> Result<Option<JournalEntry>, String> {
-    let entry = with_db(|db| {
+    let entry = with_connection(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -230,7 +230,7 @@ pub fn undo_last() -> Result<Option<JournalEntry>, String> {
         reverse_operation(e).map_err(|e| e.to_string())?;
 
         // Mark as reverted in DB
-        with_db(|db| {
+        with_connection(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 1 WHERE id = ?1",
                 params![e.id],
@@ -244,7 +244,7 @@ pub fn undo_last() -> Result<Option<JournalEntry>, String> {
 }
 
 pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
-    let entry = with_db(|db| {
+    let entry = with_connection(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -272,7 +272,7 @@ pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
         reverse_operation(e).map_err(|e| e.to_string())?;
 
         // Mark as reverted in DB
-        with_db(|db| {
+        with_connection(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 1 WHERE id = ?1",
                 params![e.id],
@@ -286,7 +286,7 @@ pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
 }
 
 pub fn redo_last() -> Result<Option<JournalEntry>, String> {
-    let entry = with_db(|db| {
+    let entry = with_connection(|db| {
         let entry: Option<JournalEntry> = db
             .query_row(
                 "SELECT id, operation_type, source_path, dest_path, timestamp, reverted
@@ -316,7 +316,7 @@ pub fn redo_last() -> Result<Option<JournalEntry>, String> {
         forward_operation(e).map_err(|e| e.to_string())?;
 
         // Mark as not reverted in DB
-        with_db(|db| {
+        with_connection(|db| {
             db.execute(
                 "UPDATE operations SET reverted = 0 WHERE id = ?1",
                 params![e.id],

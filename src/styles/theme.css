@@ -60,6 +60,8 @@
   --icon-history-fg: #34c759;
   --icon-settings: rgba(142, 142, 147, 0.1);
   --icon-settings-fg: #8e8e93;
+  --icon-capture: rgba(255, 59, 48, 0.1);
+  --icon-capture-fg: #ff3b30;
 
   color-scheme: light;
 }
@@ -114,6 +116,8 @@
   --icon-history-fg: #30d158;
   --icon-settings: rgba(142, 142, 147, 0.15);
   --icon-settings-fg: #8e8e93;
+  --icon-capture: rgba(255, 69, 58, 0.15);
+  --icon-capture-fg: #ff453a;
 
   color-scheme: dark;
 }

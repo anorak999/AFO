@@ -1,3 +1,4 @@
+use crate::core::capture;
 use crate::core::cloud_sync;
 use crate::core::duplicates;
 use crate::core::journal;
@@ -503,4 +504,115 @@ pub async fn ml_suggest_category(file_path: String) -> Result<String, String> {
     }
 
     Ok("other".to_string())
+}
+
+// ── Capture Commands ────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn get_capture_config() -> Result<capture::CaptureConfig, String> {
+    Ok(capture::load_capture_config())
+}
+
+#[tauri::command]
+pub async fn set_capture_mode_cmd(dir: String, mode: String) -> Result<(), String> {
+    let capture_mode = match mode.as_str() {
+        "auto_organize" => capture::CaptureMode::AutoOrganize,
+        "notify_only" => capture::CaptureMode::NotifyOnly,
+        "full_capture" => capture::CaptureMode::FullCapture,
+        _ => return Err(format!("Unknown capture mode: {}", mode)),
+    };
+    capture::set_capture_mode(&dir, capture_mode)
+}
+
+#[tauri::command]
+pub async fn set_scan_interval_cmd(dir: String, minutes: Option<u64>) -> Result<(), String> {
+    capture::set_scan_interval(&dir, minutes)
+}
+
+#[tauri::command]
+pub async fn toggle_always_allow_cmd(dir: String, rule_id: String, allow: bool) -> Result<(), String> {
+    capture::toggle_always_allow(&dir, &rule_id, allow)
+}
+
+#[tauri::command]
+pub async fn set_dir_enabled_cmd(dir: String, enabled: bool) -> Result<(), String> {
+    capture::set_dir_enabled(&dir, enabled)
+}
+
+#[tauri::command]
+pub async fn search_file_index(
+    query: String,
+    ext_filter: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<capture::IndexedFile>, String> {
+    capture::search_index(&query, ext_filter.as_deref(), limit.unwrap_or(50))
+}
+
+#[tauri::command]
+pub async fn get_indexed_files_cmd(
+    dir: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<capture::IndexedFile>, String> {
+    capture::get_indexed_files(&dir, limit.unwrap_or(50), offset.unwrap_or(0))
+}
+
+#[tauri::command]
+pub async fn scan_and_index_cmd(dir: String) -> Result<i64, String> {
+    capture::scan_and_index(&dir)
+}
+
+#[tauri::command]
+pub async fn get_file_history_cmd(
+    path: String,
+    limit: Option<i64>,
+) -> Result<Vec<capture::FileChange>, String> {
+    capture::get_file_history(&path, limit.unwrap_or(20))
+}
+
+#[tauri::command]
+pub async fn get_recent_changes_cmd(
+    dir: Option<String>,
+    minutes: Option<i64>,
+) -> Result<Vec<capture::FileChange>, String> {
+    capture::get_recent_changes(dir.as_deref(), minutes.unwrap_or(60), 100)
+}
+
+#[tauri::command]
+pub async fn get_pending_actions_cmd(
+    dir: Option<String>,
+) -> Result<Vec<capture::PendingAction>, String> {
+    capture::get_pending_actions(dir.as_deref())
+}
+
+#[tauri::command]
+pub async fn approve_pending_action_cmd(id: i64) -> Result<Option<capture::PendingAction>, String> {
+    capture::approve_pending_action(id)
+}
+
+#[tauri::command]
+pub async fn reject_pending_action_cmd(id: i64) -> Result<(), String> {
+    capture::reject_pending_action(id)
+}
+
+#[tauri::command]
+pub async fn approve_all_pending_cmd(
+    dir: Option<String>,
+) -> Result<Vec<capture::PendingAction>, String> {
+    capture::approve_all_pending(dir.as_deref())
+}
+
+#[tauri::command]
+pub async fn reject_all_pending_cmd(dir: Option<String>) -> Result<(), String> {
+    capture::reject_all_pending(dir.as_deref())
+}
+
+#[tauri::command]
+pub async fn get_capture_stats_cmd() -> Result<capture::CaptureStats, String> {
+    capture::get_capture_stats()
+}
+
+#[tauri::command]
+pub async fn get_dir_stats_cmd(dir: String) -> Result<capture::DirStats, String> {
+    capture::get_dir_stats(&dir)
 }
