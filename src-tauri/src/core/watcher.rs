@@ -14,8 +14,8 @@ use crate::core::organizer::unique_path;
 use crate::core::rule_engine;
 use tauri::Emitter;
 
-const DEBOUNCE_MS: u64 = 300;
-const MAX_OPS_PER_SECOND: usize = 10;
+const DEBOUNCE_MS: u64 = 100;
+const MAX_OPS_PER_SECOND: usize = 50;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WatchedDir {
@@ -53,11 +53,19 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
         move |res: Result<Event, notify::Error>| {
             if let Ok(event) = res {
                 match event.kind {
-                    EventKind::Create(_) | EventKind::Modify(_) => {
+                    EventKind::Create(_)
+                    | EventKind::Modify(_)
+                    | EventKind::Remove(_) => {
                         for path in &event.paths {
-                            if path.is_file() {
-                                let _ =
-                                    watcher_tx.blocking_send(path.to_string_lossy().to_string());
+                            let path_str = path.to_string_lossy().to_string();
+                            // Skip directories and hidden files
+                            if path.is_file() || matches!(event.kind, EventKind::Remove(_)) {
+                                tracing::debug!(
+                                    kind = ?event.kind,
+                                    path = %path_str,
+                                    "Watcher event"
+                                );
+                                let _ = watcher_tx.blocking_send(path_str);
                             }
                         }
                     }
@@ -106,6 +114,7 @@ pub fn init_watcher(tx: mpsc::Sender<String>) -> Result<(), Box<dyn std::error::
 
                             for path in &ready {
                                 pending.remove(path);
+                                tracing::debug!(path = %path, "Debounce flush: sending to process");
                                 let _ = tx_clone.send(path.clone()).await;
                             }
                         }
@@ -170,6 +179,7 @@ pub async fn process_file_event(
     // to auto-organize, queue for approval, or just index the file.
     let watched_dir = find_watched_dir_for_path(path);
     if let Some(ref dir) = watched_dir {
+        tracing::info!(path = path, dir = dir, "Capture hook: checking capture mode");
         match crate::core::capture::handle_file_event(path, "modify", dir) {
             Ok(crate::core::capture::HandleResult::QueuedForApproval) => {
                 // File queued for approval — emit event, skip rule evaluation
@@ -433,15 +443,37 @@ pub fn list_watched() -> Result<Vec<WatchedDir>, String> {
     })
 }
 
-/// Find which watched directory contains the given path
+/// Find which watched directory contains the given path.
+/// Uses canonical paths to handle symlinks and trailing slashes.
 pub fn find_watched_dir_for_path(path: &str) -> Option<String> {
+    // Normalize the input path
+    let path_str = path.trim_end_matches('/').trim_end_matches('\\');
+
     with_state(|state| {
+        // Find the longest matching directory (most specific match)
+        let mut best_match: Option<String> = None;
+        let mut best_len = 0;
+
         for (dir, enabled) in &state.watched {
-            if *enabled && (path.starts_with(dir) || path.starts_with(&format!("{}/", dir))) {
-                return Ok(Some(dir.clone()));
+            if !*enabled {
+                continue;
+            }
+            let dir_str = dir.trim_end_matches('/').trim_end_matches('\\');
+
+            // Check exact prefix match with separator
+            if path_str.starts_with(dir_str) {
+                let after = &path_str[dir_str.len()..];
+                // Match if: exact match, or followed by path separator
+                if after.is_empty() || after.starts_with('/') || after.starts_with('\\') {
+                    if dir_str.len() > best_len {
+                        best_len = dir_str.len();
+                        best_match = Some(dir.clone());
+                    }
+                }
             }
         }
-        Ok(None)
+
+        Ok(best_match)
     })
     .ok()
     .flatten()
