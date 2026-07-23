@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { FolderOpen, GitBranch, Copy, History, Settings, Radio } from "lucide-react";
+import { FolderOpen, GitBranch, Copy, HardDrive, History, Settings, Radio } from "lucide-react";
 import { useAppStore, type Panel } from "../../lib/store";
 import logo from "../../assets/logo.png";
 
@@ -8,6 +8,7 @@ const NAV_ITEMS: { id: Panel; label: string; icon: typeof FolderOpen; cssVar: st
   { id: "capture", label: "Live Capture", icon: Radio, cssVar: "--icon-capture" },
   { id: "rules", label: "Rule Builder", icon: GitBranch, cssVar: "--icon-rules" },
   { id: "duplicates", label: "Duplicates", icon: Copy, cssVar: "--icon-duplicates" },
+  { id: "storage", label: "Storage", icon: HardDrive, cssVar: "--icon-storage" },
   { id: "history", label: "History", icon: History, cssVar: "--icon-history" },
   { id: "settings", label: "Settings", icon: Settings, cssVar: "--icon-settings" },
 ];

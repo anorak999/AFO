@@ -128,6 +128,7 @@ pub fn run() {
             commands::reject_all_pending_cmd,
             commands::get_capture_stats_cmd,
             commands::get_dir_stats_cmd,
+            commands::scan_storage_breakdown,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

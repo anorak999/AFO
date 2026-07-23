@@ -7,6 +7,7 @@ import OrganizePanel from "./components/OrganizePanel";
 import LiveCapturePanel from "./components/LiveCapture";
 import RuleBuilder from "./components/RuleBuilder";
 import DuplicatesPanel from "./components/DuplicatesPanel";
+import StoragePanel from "./components/StoragePanel";
 import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import CommandPalette from "./components/CommandPalette";
@@ -18,6 +19,7 @@ const panels = {
   capture: LiveCapturePanel,
   rules: RuleBuilder,
   duplicates: DuplicatesPanel,
+  storage: StoragePanel,
   history: HistoryPanel,
   settings: SettingsPanel,
 } as const;

@@ -616,3 +616,112 @@ pub async fn get_capture_stats_cmd() -> Result<capture::CaptureStats, String> {
 pub async fn get_dir_stats_cmd(dir: String) -> Result<capture::DirStats, String> {
     capture::get_dir_stats(&dir)
 }
+
+// ── Storage Breakdown ───────────────────────────────────────────────
+
+#[derive(serde::Serialize)]
+pub struct CategoryBreakdown {
+    pub label: String,
+    pub bytes: u64,
+}
+
+#[derive(serde::Serialize)]
+pub struct StorageBreakdownResult {
+    pub directory: String,
+    pub total_scanned_bytes: u64,
+    pub categories: Vec<CategoryBreakdown>,
+}
+
+#[tauri::command]
+pub async fn scan_storage_breakdown(directory: String) -> Result<StorageBreakdownResult, String> {
+    use crate::core::organizer::CategoryConfig;
+
+    if !std::path::Path::new(&directory).is_dir() {
+        return Err(format!("{} is not a directory", directory));
+    }
+
+    let config = CategoryConfig::load();
+    let dir_clone = directory.clone();
+
+    // Collect results in a blocking task to avoid freezing the UI
+    let result = tokio::task::spawn_blocking(move || {
+        let mut category_sizes: std::collections::HashMap<String, u64> =
+            std::collections::HashMap::new();
+        let mut total_bytes: u64 = 0;
+
+        fn walk_dir(
+            path: &std::path::Path,
+            config: &CategoryConfig,
+            category_sizes: &mut std::collections::HashMap<String, u64>,
+            total_bytes: &mut u64,
+        ) {
+            let entries = match std::fs::read_dir(path) {
+                Ok(e) => e,
+                Err(_) => return, // skip permission-denied dirs
+            };
+
+            for entry in entries {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => continue,
+                };
+                let metadata = match entry.metadata() {
+                    Ok(m) => m,
+                    Err(_) => continue,
+                };
+
+                if metadata.is_dir() {
+                    walk_dir(&entry.path(), config, category_sizes, total_bytes);
+                } else if metadata.is_file() {
+                    let size = metadata.len();
+                    *total_bytes += size;
+
+                    let ext = entry
+                        .path()
+                        .extension()
+                        .map(|e| e.to_string_lossy().to_string())
+                        .unwrap_or_default();
+
+                    let category = config.categorize(&ext);
+                    // Capitalize first letter for display
+                    let label = match category {
+                        "images" => "Images",
+                        "documents" => "Documents",
+                        "audio" => "Audio",
+                        "video" => "Video",
+                        "archives" => "Archives",
+                        "code" => "Code",
+                        _ => "Other",
+                    };
+                    *category_sizes
+                        .entry(label.to_string())
+                        .or_insert(0) += size;
+                }
+            }
+        }
+
+        walk_dir(
+            std::path::Path::new(&dir_clone),
+            &config,
+            &mut category_sizes,
+            &mut total_bytes,
+        );
+
+        // Build sorted categories (largest first)
+        let mut categories: Vec<CategoryBreakdown> = category_sizes
+            .into_iter()
+            .map(|(label, bytes)| CategoryBreakdown { label, bytes })
+            .collect();
+        categories.sort_by(|a, b| b.bytes.cmp(&a.bytes));
+
+        StorageBreakdownResult {
+            directory: dir_clone,
+            total_scanned_bytes: total_bytes,
+            categories,
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(result)
+}
