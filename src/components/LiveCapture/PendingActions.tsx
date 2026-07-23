@@ -88,10 +88,10 @@ export default function PendingActions({ actions, onRefresh }: Props) {
                   {action.rule_name && <span style={{ color: "var(--accent)" }}> ({action.rule_name})</span>}
                 </div>
               </div>
-              <button onClick={() => handleApprove(action.id)} disabled={acting} className="p-1 rounded" style={{ color: "var(--success)" }}>
+              <button onClick={() => handleApprove(action.id)} disabled={acting} className="p-1 rounded" style={{ color: "var(--success)" }} aria-label={`Approve ${srcName}`}>
                 <Check size={14} />
               </button>
-              <button onClick={() => handleReject(action.id)} disabled={acting} className="p-1 rounded" style={{ color: "var(--danger)" }}>
+              <button onClick={() => handleReject(action.id)} disabled={acting} className="p-1 rounded" style={{ color: "var(--danger)" }} aria-label={`Reject ${srcName}`}>
                 <X size={14} />
               </button>
             </div>

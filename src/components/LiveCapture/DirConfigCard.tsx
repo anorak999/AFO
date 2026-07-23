@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Scan } from "lucide-react";
+import { showToast } from "../Toast";
 import { type DirectoryConfig, type DirStats, type CaptureMode, setCaptureMode, setDirEnabled, scanAndIndex } from "../../lib/tauri-bridge";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
@@ -28,20 +29,31 @@ export default function DirConfigCard({ config, stats, onRemoved }: Props) {
   const [scanning, setScanning] = useState(false);
 
   async function handleModeChange(mode: CaptureMode) {
-    await setCaptureMode(config.path, mode);
-    onRemoved(); // trigger refresh
+    try {
+      await setCaptureMode(config.path, mode);
+      onRemoved();
+    } catch (e) {
+      showToast(`Failed to change mode: ${e}`, "error");
+    }
   }
 
   async function handleToggle(enabled: boolean) {
-    await setDirEnabled(config.path, enabled);
-    onRemoved();
+    try {
+      await setDirEnabled(config.path, enabled);
+      onRemoved();
+    } catch (e) {
+      showToast(`Failed to toggle dir: ${e}`, "error");
+    }
   }
 
   async function handleScan() {
     setScanning(true);
     try {
-      await scanAndIndex(config.path);
-      onRemoved(); // trigger refresh
+      const count = await scanAndIndex(config.path);
+      showToast(`Indexed ${count} files in ${config.path.split(/[\\/]/).pop()}`, "success");
+      onRemoved();
+    } catch (e) {
+      showToast(`Scan failed: ${e}`, "error");
     } finally {
       setScanning(false);
     }

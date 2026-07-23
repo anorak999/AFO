@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { FolderOpen } from "lucide-react";
+import { showToast } from "../Toast";
 import {
   getCaptureConfig,
   getCaptureStats,
   getDirStats,
   getPendingActions,
   watchDirectory,
+  setCaptureMode,
   type CaptureConfig,
   type CaptureStats as CaptureStatsType,
   type DirStats,
@@ -37,13 +39,15 @@ export default function LiveCapturePanel() {
       setStats(s);
       setPending(p);
 
-      // Load per-dir stats
+      // Parallelize per-dir stats (was N+1 sequential)
       const ds: Record<string, DirStats> = {};
-      for (const dir of c.directories) {
+      const statsPromises = c.directories.map(async (dir) => {
         try {
-          ds[dir.path] = await getDirStats(dir.path);
+          const st = await getDirStats(dir.path);
+          ds[dir.path] = st;
         } catch { /* skip */ }
-      }
+      });
+      await Promise.all(statsPromises);
       setDirStats(ds);
     } finally {
       setLoading(false);
@@ -57,23 +61,36 @@ export default function LiveCapturePanel() {
   }, [refresh]);
 
   async function handleAddDir() {
-    if (!newDir.trim()) return;
+    const dir = newDir.trim();
+    if (!dir) return;
     try {
-      await watchDirectory(newDir.trim());
+      // Start watching (in-memory watcher state)
+      await watchDirectory(dir);
+      // Ensure dir exists in capture config with default mode
+      try {
+        await setCaptureMode(dir, "auto_organize");
+      } catch { /* config may already exist, that's fine */ }
       setNewDir("");
+      showToast(`Now watching: ${dir}`, "success");
       await refresh();
-    } catch { /* ignore */ }
+    } catch (e) {
+      showToast(`Failed to watch directory: ${e}`, "error");
+    }
   }
 
   async function handlePickDir() {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const sel = await open({ directory: true, multiple: false });
-      if (sel && typeof sel === "string") {
-        await watchDirectory(sel);
-        await refresh();
+      // Tauri v2 returns string | string[] | null
+      if (!sel) return;
+      const dirPath = Array.isArray(sel) ? sel[0] : sel;
+      if (dirPath && typeof dirPath === "string") {
+        setNewDir(dirPath);
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      showToast(`Directory picker failed: ${e}`, "error");
+    }
   }
 
   if (loading) {
