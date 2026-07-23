@@ -1,6 +1,6 @@
 [package]
 name = "afo"
-version = "2.5.37"
+version = "2.5.38"
 description = "Advanced File Organizer"
 authors = ["AFO Contributors"]
 edition = "2021"
