@@ -23,6 +23,12 @@ interface LiveEvent {
   timestamp: Date;
 }
 
+// Design decision: When "Enable Undo/Redo" is turned OFF, we only hide the UI controls.
+// Journal writes continue underneath so turning it back on preserves full history.
+// This avoids data loss from toggling the setting and keeps the simpler mental model:
+// "undo is always recording, I just can't see it right now."
+const STORAGE_KEY_ENABLE_UNDO = "afo:enableUndoRedo";
+
 export default function HistoryPanel() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +36,17 @@ export default function HistoryPanel() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [acting, setActing] = useState(false);
-  const [enableUndoRedo, setEnableUndoRedo] = useState(true);
+  const [enableUndoRedo, setEnableUndoRedo] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_ENABLE_UNDO);
+    return stored !== null ? stored === "true" : true;
+  });
   const [keepFullHistory] = useState(true);
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+
+  // Persist the setting to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_ENABLE_UNDO, String(enableUndoRedo));
+  }, [enableUndoRedo]);
 
   useEffect(() => {
     const unlisten = listen<{ type: string; source: string; destination?: string; rule?: string }>(
@@ -71,18 +85,20 @@ export default function HistoryPanel() {
       {/* History Settings */}
       <Card>
         <CardHeader>History Settings</CardHeader>
-        <CardRow label="Enable Undo/Redo" description="Allow reverting operations" control={<Toggle checked={enableUndoRedo} onChange={setEnableUndoRedo} />} />
+        <CardRow label="Enable Undo/Redo" description="Show undo/redo controls (journal always records)" control={<Toggle checked={enableUndoRedo} onChange={setEnableUndoRedo} />} />
         <CardRow label="Keep Full History" description="Store all operations (always on)" control={<Toggle checked={keepFullHistory} onChange={() => {}} disabled />} />
       </Card>
 
-      {/* Actions */}
-      <Card>
-        <CardHeader>Actions</CardHeader>
-        <div className="flex gap-3 mt-1">
-          <Button variant="secondary" onClick={handleUndoLast} disabled={acting || entries.length === 0} className="gap-2"><RotateCcw size={14} /> Undo Last</Button>
-          <Button variant="secondary" onClick={handleRedo} disabled={acting} className="gap-2"><RotateCw size={14} /> Redo</Button>
-        </div>
-      </Card>
+      {/* Actions - only shown when undo/redo is enabled */}
+      {enableUndoRedo && (
+        <Card>
+          <CardHeader>Actions</CardHeader>
+          <div className="flex gap-3 mt-1">
+            <Button variant="secondary" onClick={handleUndoLast} disabled={acting || entries.length === 0} className="gap-2"><RotateCcw size={14} /> Undo Last</Button>
+            <Button variant="secondary" onClick={handleRedo} disabled={acting} className="gap-2"><RotateCw size={14} /> Redo</Button>
+          </div>
+        </Card>
+      )}
 
       {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "var(--accent-soft)", color: "var(--danger)" }}>{error}</div>}
 
@@ -134,7 +150,7 @@ export default function HistoryPanel() {
                   </div>
                   <div className="shrink-0 text-xs" style={{ color: "var(--text-tertiary)" }}>{new Date(entry.timestamp).toLocaleString()}</div>
                   {entry.reverted && <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "var(--bg-inset)", color: "var(--text-tertiary)" }}>Reverted</span>}
-                  {!entry.reverted && <Button variant="secondary" onClick={() => handleUndoEntry(entry.id)} disabled={acting} className="text-xs px-3 py-1.5"><Undo2 size={12} /> Undo</Button>}
+                  {!entry.reverted && enableUndoRedo && <Button variant="secondary" onClick={() => handleUndoEntry(entry.id)} disabled={acting} className="text-xs px-3 py-1.5"><Undo2 size={12} /> Undo</Button>}
                 </div>
               );
             })}

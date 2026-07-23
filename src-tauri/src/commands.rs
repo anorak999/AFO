@@ -17,12 +17,15 @@ fn is_permission_denied(err: &io::Error) -> bool {
 }
 
 /// Attempt a file move with one retry after a short delay (helps with Windows file locks)
-fn retry_move(src: &std::path::Path, dst: &std::path::Path) -> io::Result<()> {
+/// Uses tokio::time::sleep to avoid blocking the Tokio runtime thread during retry.
+async fn retry_move(src: &std::path::Path, dst: &std::path::Path) -> io::Result<()> {
     match std::fs::rename(src, dst) {
         Ok(()) => Ok(()),
         Err(e) if is_permission_denied(&e) => {
             // Retry once after a short delay — helps with Windows file locks
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            // Use tokio::time::sleep instead of std::thread::sleep to avoid
+            // blocking the Tokio runtime thread during the backoff.
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             std::fs::rename(src, dst)
         }
         Err(e) => Err(e),
@@ -78,18 +81,14 @@ pub async fn organize_by_extension(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match retry_move(std::path::Path::new(&file.path), &target_file) {
+            match retry_move(std::path::Path::new(&file.path), &target_file).await {
                 Ok(()) => {
                     result.moved += 1;
-                    let entry = journal::JournalEntry {
-                        id: 0,
-                        operation_type: "move".to_string(),
-                        source_path: file.path.clone(),
-                        dest_path: target_file.to_string_lossy().to_string(),
-                        timestamp: chrono::Utc::now().to_rfc3339(),
-                        reverted: false,
-                    };
-                    let _ = journal::record_operation(&entry);
+                    let _ = journal::record_file_operation(
+                        "move",
+                        &file.path,
+                        &target_file.to_string_lossy(),
+                    );
                 }
                 Err(e) => {
                     if is_permission_denied(&e) {
@@ -181,18 +180,14 @@ pub async fn organize_by_date(
                 std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
             }
             let target_file = organizer::unique_path(&target_dir.join(&file.name));
-            match retry_move(std::path::Path::new(&file.path), &target_file) {
+            match retry_move(std::path::Path::new(&file.path), &target_file).await {
                 Ok(()) => {
                     result.moved += 1;
-                    let entry = journal::JournalEntry {
-                        id: 0,
-                        operation_type: "move".to_string(),
-                        source_path: file.path.clone(),
-                        dest_path: target_file.to_string_lossy().to_string(),
-                        timestamp: chrono::Utc::now().to_rfc3339(),
-                        reverted: false,
-                    };
-                    let _ = journal::record_operation(&entry);
+                    let _ = journal::record_file_operation(
+                        "move",
+                        &file.path,
+                        &target_file.to_string_lossy(),
+                    );
                 }
                 Err(e) => {
                     if is_permission_denied(&e) {
@@ -270,18 +265,14 @@ pub async fn batch_rename(
             result.moved += 1;
         } else {
             let target = organizer::unique_path(&new_path);
-            match retry_move(std::path::Path::new(&file.path), &target) {
+            match retry_move(std::path::Path::new(&file.path), &target).await {
                 Ok(()) => {
                     result.moved += 1;
-                    let entry = journal::JournalEntry {
-                        id: 0,
-                        operation_type: "rename".to_string(),
-                        source_path: file.path.clone(),
-                        dest_path: target.to_string_lossy().to_string(),
-                        timestamp: chrono::Utc::now().to_rfc3339(),
-                        reverted: false,
-                    };
-                    let _ = journal::record_operation(&entry);
+                    let _ = journal::record_file_operation(
+                        "rename",
+                        &file.path,
+                        &target.to_string_lossy(),
+                    );
                 }
                 Err(e) => {
                     if is_permission_denied(&e) {

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use super::journal;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
     pub name: String,
@@ -233,7 +235,15 @@ pub async fn organize_by_extension(
 
         let target_file = unique_path(&target_dir.join(&file.name));
         match std::fs::rename(&file.path, &target_file) {
-            Ok(()) => result.moved += 1,
+            Ok(()) => {
+                result.moved += 1;
+                // Record to journal so scheduled operations are undoable
+                let _ = journal::record_file_operation(
+                    "move",
+                    &file.path,
+                    &target_file.to_string_lossy(),
+                );
+            }
             Err(e) => result
                 .errors
                 .push(format!("Failed to move {}: {}", file.name, e)),
@@ -288,7 +298,15 @@ pub async fn organize_by_date(
 
         let target_file = unique_path(&target_dir.join(&file.name));
         match std::fs::rename(&file.path, &target_file) {
-            Ok(()) => result.moved += 1,
+            Ok(()) => {
+                result.moved += 1;
+                // Record to journal so scheduled operations are undoable
+                let _ = journal::record_file_operation(
+                    "move",
+                    &file.path,
+                    &target_file.to_string_lossy(),
+                );
+            }
             Err(e) => result
                 .errors
                 .push(format!("Failed to move {}: {}", file.name, e)),

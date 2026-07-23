@@ -98,6 +98,24 @@ pub fn record_operation(entry: &JournalEntry) -> Result<(), String> {
     })
 }
 
+/// Helper to record a file move/rename operation to the journal.
+/// Used by both manual (commands.rs) and scheduled (organizer.rs) code paths.
+pub fn record_file_operation(
+    operation_type: &str,
+    source_path: &str,
+    dest_path: &str,
+) -> Result<(), String> {
+    let entry = JournalEntry {
+        id: 0,
+        operation_type: operation_type.to_string(),
+        source_path: source_path.to_string(),
+        dest_path: dest_path.to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        reverted: false,
+    };
+    record_operation(&entry)
+}
+
 pub fn get_history(limit: i64, offset: i64) -> Result<Vec<JournalEntry>, String> {
     with_connection(|db| {
         let mut stmt = db
@@ -270,6 +288,11 @@ pub fn undo_operation(id: i64) -> Result<Option<JournalEntry>, String> {
     })?;
 
     if let Some(ref e) = entry {
+        // If already reverted, this is a no-op (prevents double-reverse)
+        if e.reverted {
+            return Ok(entry);
+        }
+
         // Actually reverse the file operation
         reverse_operation(e).map_err(|e| e.to_string())?;
 

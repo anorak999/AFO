@@ -1,4 +1,5 @@
 use crate::core::organizer::{scan_directory, unique_path, OrganizeResult};
+use crate::core::journal;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -376,6 +377,12 @@ fn apply_actions(
                     continue;
                 }
                 fs::rename(path, &target)?;
+                // Record to journal so rule-based operations are undoable
+                let _ = journal::record_file_operation(
+                    "move",
+                    file_path,
+                    &target.to_string_lossy(),
+                );
             }
             Action::Copy { destination } => {
                 let dest_dir = Path::new(destination);
@@ -387,6 +394,12 @@ fn apply_actions(
                     continue;
                 }
                 fs::copy(path, &target)?;
+                // Record to journal so rule-based operations are undoable
+                let _ = journal::record_file_operation(
+                    "copy",
+                    file_path,
+                    &target.to_string_lossy(),
+                );
             }
             Action::Rename { pattern } => {
                 let name_no_ext = path
@@ -407,6 +420,12 @@ fn apply_actions(
                     continue;
                 }
                 fs::rename(path, &target)?;
+                // Record to journal so rule-based operations are undoable
+                let _ = journal::record_file_operation(
+                    "rename",
+                    file_path,
+                    &target.to_string_lossy(),
+                );
             }
         }
     }
