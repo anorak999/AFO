@@ -181,11 +181,11 @@ function SchedulesCard() {
 }
 
 function NotificationsSection() {
-  const [settings, setSettings] = useState<{ operationComplete: boolean; scheduledRun: boolean; errorAlerts: boolean }>(() => {
+  const [settings, setSettings] = useState<{ operationComplete: boolean; scheduledRun: boolean; errorAlerts: boolean; liveCapture: boolean }>(() => {
     try {
       const saved = localStorage.getItem("afo-notification-settings");
-      return saved ? JSON.parse(saved) : { operationComplete: true, scheduledRun: true, errorAlerts: true };
-    } catch { return { operationComplete: true, scheduledRun: true, errorAlerts: true }; }
+      return saved ? { operationComplete: true, scheduledRun: true, errorAlerts: true, liveCapture: true, ...JSON.parse(saved) } : { operationComplete: true, scheduledRun: true, errorAlerts: true, liveCapture: true };
+    } catch { return { operationComplete: true, scheduledRun: true, errorAlerts: true, liveCapture: true }; }
   });
 
   function toggle(key: keyof typeof settings) {
@@ -202,6 +202,7 @@ function NotificationsSection() {
         <CardHeader>Notifications</CardHeader>
         <CardDescription>Configure when and how you receive notifications.</CardDescription>
         <CardRow label="Operation Complete" description="Toast when organize/rename finishes" control={<Toggle checked={settings.operationComplete} onChange={() => toggle("operationComplete")} />} />
+        <CardRow label="Live Capture" description="Toast on file changes in watched directories" control={<Toggle checked={settings.liveCapture} onChange={() => toggle("liveCapture")} />} />
         <CardRow label="Scheduled Run" description="Notify on cron job completion" control={<Toggle checked={settings.scheduledRun} onChange={() => toggle("scheduledRun")} />} />
         <CardRow label="Error Alerts" description="Show errors immediately" control={<Toggle checked={settings.errorAlerts} onChange={() => toggle("errorAlerts")} />} />
       </Card>
@@ -237,7 +238,7 @@ function AboutSection() {
       <Card>
         <CardHeader>About AFO</CardHeader>
         <CardDescription>Advanced File Organizer</CardDescription>
-        <CardRow label="Version" rightValue="2.5.44" />
+        <CardRow label="Version" rightValue="2.5.47" />
         <CardRow label="Build" rightValue="2026-07-21" />
         <CardRow label="Engine" rightValue="Tauri v2 + Rust" />
         <CardRow label="License" rightValue="MIT" />

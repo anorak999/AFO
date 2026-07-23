@@ -50,6 +50,18 @@ export default function App() {
   );
 
   useEffect(() => {
+    // Helper: read live notification toggle from localStorage (matches Settings > Notifications pattern)
+    function isLiveCaptureEnabled(): boolean {
+      try {
+        const saved = localStorage.getItem("afo-notification-settings");
+        if (saved) {
+          const s = JSON.parse(saved);
+          return s.liveCapture !== false; // default true
+        }
+      } catch { /* ignore */ }
+      return true;
+    }
+
     const unlistenActivity = listen<{ type: string; source: string; destination?: string; rule?: string }>(
       "afo://activity",
       (event) => {
@@ -64,18 +76,12 @@ export default function App() {
       },
     );
 
-    const unlistenPending = listen<{ source: string; filename?: string; watched_dir?: string }>(
-      "afo://pending-action",
-      (event) => {
-        const { source } = event.payload;
-        const filename = source.split(/[\\/]/).pop() || source;
-        showToast(`Pending approval: "${filename}" — check Live Capture tab`, "info");
-      },
-    );
-
+    // Single event handler for all Live Capture file changes (consolidated)
+    // Replaces the separate afo://pending-action listener to prevent double-toasts.
     const unlistenFileChange = listen<{ source: string; filename?: string; watched_dir?: string; change_type?: string }>(
       "afo://file-change",
       (event) => {
+        if (!isLiveCaptureEnabled()) return;
         const { filename, change_type } = event.payload;
         const name = filename || event.payload.source.split(/[\\/]/).pop() || event.payload.source;
         const label = change_type === "pending" ? "Pending approval" :
@@ -87,7 +93,6 @@ export default function App() {
 
     return () => {
       unlistenActivity.then((fn) => fn());
-      unlistenPending.then((fn) => fn());
       unlistenFileChange.then((fn) => fn());
     };
   }, []);
