@@ -143,29 +143,23 @@ pub async fn process_file_event(
     path: &str,
     app: &tauri::AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Rate limiting
+    // Rate limiting + debounce in a single lock acquisition
     {
         let state = STATE.get().ok_or("Watcher not initialized")?;
         let mut state = state.lock().map_err(|e| e.to_string())?;
 
-        // Reset counter every second
+        // Rate limit: reset counter every second
         if state.ops_reset_time.elapsed() >= Duration::from_secs(1) {
             state.ops_count.store(0, Ordering::Relaxed);
             state.ops_reset_time = Instant::now();
         }
-
         let count = state.ops_count.fetch_add(1, Ordering::Relaxed);
         if count >= MAX_OPS_PER_SECOND {
             warn!(path = path, "Rate limit exceeded, skipping event");
             return Ok(());
         }
-    }
 
-    // Check debounce
-    {
-        let state = STATE.get().ok_or("Watcher not initialized")?;
-        let mut state = state.lock().map_err(|e| e.to_string())?;
-
+        // Debounce: skip if same path processed recently
         if let Some(last_time) = state.last_events.get(path) {
             if last_time.elapsed() < Duration::from_millis(DEBOUNCE_MS) {
                 return Ok(());

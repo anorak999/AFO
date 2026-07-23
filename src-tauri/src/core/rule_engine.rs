@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, RwLock};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
@@ -75,23 +75,23 @@ fn rules_path() -> PathBuf {
 //   - Patterns are bounded by the number of user-defined rules (small, finite)
 //   - Each pattern leaks exactly once, then reused for every file evaluation
 //   - Desktop app memory budget makes this negligible
-static REGEX_CACHE: LazyLock<Mutex<HashMap<String, &'static Regex>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+static REGEX_CACHE: LazyLock<RwLock<HashMap<String, &'static Regex>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// Get or compile a regex pattern, returning a cached &'static reference.
 /// Invalid patterns return None (same behavior as before, but only compiled once).
 fn get_regex(pattern: &str) -> Option<&'static Regex> {
-    // Fast path: read lock
+    // Fast path: read lock (allows concurrent reads)
     {
-        let cache = REGEX_CACHE.lock().ok()?;
+        let cache = REGEX_CACHE.read().ok()?;
         if let Some(re) = cache.get(pattern) {
             return Some(*re);
         }
     }
-    // Slow path: compile and insert
+    // Slow path: compile and insert (write lock)
     let compiled = Regex::new(pattern).ok()?;
     let leaked: &'static Regex = Box::leak(Box::new(compiled));
-    let mut cache = REGEX_CACHE.lock().ok()?;
+    let mut cache = REGEX_CACHE.write().ok()?;
     // Double-check in case another thread inserted while we were compiling
     cache.entry(pattern.to_string()).or_insert(leaked);
     Some(*cache.get(pattern).unwrap_or(&leaked))

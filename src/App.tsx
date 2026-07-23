@@ -26,21 +26,13 @@ const panels = {
 
 function ActivePanel() {
   const activePanel = useAppStore((s) => s.activePanel);
+  const Panel = panels[activePanel];
 
   return (
     <div className="relative h-full">
-      {(Object.keys(panels) as (keyof typeof panels)[]).map((id) => {
-        const Panel = panels[id];
-        return (
-          <div
-            key={id}
-            className="absolute inset-0 h-full overflow-y-auto"
-            style={{ display: activePanel === id ? "block" : "none" }}
-          >
-            <Panel />
-          </div>
-        );
-      })}
+      <div className="absolute inset-0 h-full overflow-y-auto">
+        <Panel />
+      </div>
     </div>
   );
 }

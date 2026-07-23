@@ -106,22 +106,27 @@ pub fn scan_duplicates(
     // for all unique-size files. On a typical directory where most files have
     // unique sizes, this eliminates 60-80% of blake3 hashing work.
     //
-    // Step 1: Collect (path, size) pairs — one metadata read per file (cheap)
-    let path_sizes: Vec<(PathBuf, u64)> = files
+    // Step 1: Collect (path, size, modified) — one metadata read per file
+    let path_metadata: Vec<(PathBuf, u64, SystemTime)> = files
         .iter()
         .filter_map(|path| {
-            let size = fs::metadata(path).ok()?.len();
-            Some((path.clone(), size))
+            let meta = fs::metadata(path).ok()?;
+            let size = meta.len();
+            let modified = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+            Some((path.clone(), size, modified))
         })
         .collect();
 
     // Step 2: Bucket by size — only hash buckets with 2+ files
-    let mut size_buckets: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-    for (path, size) in &path_sizes {
-        size_buckets.entry(*size).or_default().push(path.clone());
+    let mut size_buckets: HashMap<u64, Vec<(PathBuf, SystemTime)>> = HashMap::new();
+    for (path, size, modified) in &path_metadata {
+        size_buckets
+            .entry(*size)
+            .or_default()
+            .push((path.clone(), *modified));
     }
 
-    let files_to_hash: Vec<PathBuf> = size_buckets
+    let files_to_hash: Vec<(PathBuf, SystemTime)> = size_buckets
         .into_values()
         .filter(|bucket| bucket.len() >= 2)
         .flatten()
@@ -130,25 +135,22 @@ pub fn scan_duplicates(
     let _total = files_to_hash.len();
     let processed = Arc::new(AtomicUsize::new(0));
 
-    // Step 3: Hash only same-size files in parallel
-    let hashed: Vec<(PathBuf, String, u64)> = files_to_hash
+    // Step 3: Hash only same-size files in parallel (no extra metadata reads)
+    let hashed: Vec<(PathBuf, String, u64, SystemTime)> = files_to_hash
         .par_iter()
-        .filter_map(|path| {
-            let result = hash_file(path).and_then(|hash| {
-                let size = fs::metadata(path).ok()?.len();
-                Some((path.clone(), hash, size))
+        .filter_map(|(path, modified)| {
+            let result = hash_file(path).map(|hash| {
+                let size = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                (path.clone(), hash, size, *modified)
             });
             processed.fetch_add(1, Ordering::Relaxed);
             result
         })
         .collect();
 
-    // Group by hash
+    // Group by hash (metadata already collected — no more stat() calls)
     let mut groups: HashMap<String, Vec<(PathBuf, u64, SystemTime)>> = HashMap::new();
-    for (path, hash, size) in hashed {
-        let modified = fs::metadata(&path)
-            .and_then(|m| m.modified())
-            .unwrap_or(SystemTime::UNIX_EPOCH);
+    for (path, hash, size, modified) in hashed {
         groups.entry(hash).or_default().push((path, size, modified));
     }
 

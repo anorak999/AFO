@@ -302,16 +302,26 @@ pub async fn organize_by_date(
 pub(crate) fn get_file_date(path: &str) -> Option<chrono::DateTime<chrono::Local>> {
     let p = std::path::Path::new(path);
 
-    // Try to extract EXIF date taken for image files
-    let metadata = crate::core::metadata::extract_metadata(path);
-    if let Some(exif) = &metadata.exif {
-        if let Some(date_taken) = &exif.date_taken {
-            // Parse EXIF date format "YYYY:MM:DD HH:MM:SS"
-            if let Ok(naive) =
-                chrono::NaiveDateTime::parse_from_str(date_taken, "%Y:%m:%d %H:%M:%S")
-            {
-                let local = naive.and_local_timezone(chrono::Local).single()?;
-                return Some(local);
+    // Only attempt metadata extraction for image/audio files (avoids opening
+    // PDFs, text files, etc. just to find they have no EXIF/audio tags)
+    if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
+        let ext_lower = ext.to_lowercase();
+        let is_media = matches!(
+            ext_lower.as_str(),
+            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" | "heic"
+                | "mp3" | "wav" | "flac" | "aac" | "ogg" | "m4a"
+        );
+        if is_media {
+            let metadata = crate::core::metadata::extract_metadata(path);
+            if let Some(exif) = &metadata.exif {
+                if let Some(date_taken) = &exif.date_taken {
+                    if let Ok(naive) =
+                        chrono::NaiveDateTime::parse_from_str(date_taken, "%Y:%m:%d %H:%M:%S")
+                    {
+                        let local = naive.and_local_timezone(chrono::Local).single()?;
+                        return Some(local);
+                    }
+                }
             }
         }
     }

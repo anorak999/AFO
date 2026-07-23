@@ -57,8 +57,9 @@ pub fn run() {
                 core::scheduler::start_scheduler_loop(app_handle_scheduler).await;
             });
 
-            // Initialize watcher with channel
-            let (tx, mut rx) = mpsc::channel::<String>(100);
+            // Initialize watcher with channel (increased from 100 to 1000 to prevent
+            // event loss during bulk file operations like cp -r of 10k+ files)
+            let (tx, mut rx) = mpsc::channel::<String>(1000);
 
             if let Err(e) = core::watcher::init_watcher(tx) {
                 tracing::error!(error = %e, "Failed to initialize watcher");

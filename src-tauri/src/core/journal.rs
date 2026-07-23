@@ -64,6 +64,7 @@ pub fn init_journal() -> Result<(), Box<dyn std::error::Error>> {
 
     db.execute_batch(
         "PRAGMA journal_mode=WAL;
+         PRAGMA busy_timeout = 5000;
          CREATE TABLE IF NOT EXISTS operations (
              id INTEGER PRIMARY KEY AUTOINCREMENT,
              operation_type TEXT NOT NULL,
@@ -71,7 +72,8 @@ pub fn init_journal() -> Result<(), Box<dyn std::error::Error>> {
              dest_path TEXT NOT NULL,
              timestamp TEXT NOT NULL,
              reverted INTEGER NOT NULL DEFAULT 0
-         );",
+         );
+         CREATE INDEX IF NOT EXISTS idx_ops_reverted_ts ON operations(reverted, timestamp DESC);",
     )?;
     DB.set(Mutex::new(db))
         .map_err(|_| "Journal already initialized")?;
