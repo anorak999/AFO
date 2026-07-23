@@ -63,19 +63,28 @@ export default function LiveCapturePanel() {
   async function handleAddDir() {
     const dir = newDir.trim();
     if (!dir) return;
+
+    // Always add to capture config first (for manual scanning)
     try {
-      // Start watching (in-memory watcher state)
+      await setCaptureMode(dir, "auto_organize");
+    } catch { /* config may already exist */ }
+
+    // Try to start watching (may fail for permission-restricted dirs)
+    let watchOk = false;
+    try {
       await watchDirectory(dir);
-      // Ensure dir exists in capture config with default mode
-      try {
-        await setCaptureMode(dir, "auto_organize");
-      } catch { /* config may already exist, that's fine */ }
-      setNewDir("");
-      showToast(`Now watching: ${dir}`, "success");
-      await refresh();
+      watchOk = true;
     } catch (e) {
-      showToast(`Failed to watch directory: ${e}`, "error");
+      // Watching failed — dir is still in capture config for manual scanning
+      showToast(`Added to capture config, but real-time watching failed: ${e}`, "info");
     }
+
+    if (watchOk) {
+      showToast(`Now watching: ${dir}`, "success");
+    }
+
+    setNewDir("");
+    await refresh();
   }
 
   async function handlePickDir() {

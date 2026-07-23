@@ -333,11 +333,31 @@ pub fn start_watching(dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("{} is not a directory", dir).into());
     }
 
+    // Check read permission before attempting to watch
+    match std::fs::read_dir(&path) {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            return Err(format!(
+                "Permission denied: cannot read '{}'. Check directory permissions or try a different path.",
+                dir
+            ).into());
+        }
+        Err(e) => {
+            return Err(format!(
+                "Cannot access '{}': {}",
+                dir, e
+            ).into());
+        }
+    }
+
     with_state(|state| {
         state
             .watcher
             .watch(&path, RecursiveMode::Recursive)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!(
+                "Failed to watch '{}': {}. The directory may have restricted permissions or contain inaccessible symlinks.",
+                dir, e
+            ))?;
         state.watched.insert(dir.to_string(), true);
         info!(dir = dir, "Started watching directory");
         Ok(())
