@@ -8,10 +8,10 @@ import Toggle from "../ui/Toggle";
 
 const PAGE_SIZE = 20;
 const OP_COLORS: Record<string, { bg: string; fg: string }> = {
-  move: { bg: "rgba(90,200,250,0.1)", fg: "var(--info)" },
-  copy: { bg: "rgba(52,199,89,0.1)", fg: "var(--success)" },
-  rename: { bg: "rgba(255,149,0,0.1)", fg: "var(--warning)" },
-  delete: { bg: "rgba(255,59,48,0.1)", fg: "var(--danger)" },
+  move: { bg: "var(--accent-soft)", fg: "var(--info)" },
+  copy: { bg: "var(--accent-soft)", fg: "var(--success)" },
+  rename: { bg: "var(--accent-soft)", fg: "var(--warning)" },
+  delete: { bg: "var(--accent-soft)", fg: "var(--danger)" },
 };
 
 interface LiveEvent {
@@ -84,7 +84,7 @@ export default function HistoryPanel() {
         </div>
       </Card>
 
-      {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "rgba(255,59,48,0.06)", color: "var(--danger)" }}>{error}</div>}
+      {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "var(--accent-soft)", color: "var(--danger)" }}>{error}</div>}
 
       {/* Live Activity Feed */}
       {liveEvents.length > 0 && (

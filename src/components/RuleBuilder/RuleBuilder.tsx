@@ -143,7 +143,7 @@ export default function RuleBuilder() {
         <Button onClick={startCreate} className="gap-2"><Plus size={14} /> Create Rule</Button>
       </div>
 
-      {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "rgba(255,59,48,0.06)", color: "var(--danger)" }}>{error}</div>}
+      {error && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "var(--accent-soft)", color: "var(--danger)" }}>{error}</div>}
 
       {/* Rule Builder Settings */}
       <Card>

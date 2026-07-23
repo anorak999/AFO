@@ -150,7 +150,7 @@ export default function OrganizePanel() {
       <Card>
         <CardRow label="Preview only (dry run)" control={
           <button onClick={() => setDryRun(!dryRun)} className="relative rounded-full transition-colors" style={{ width: 44, height: 26, backgroundColor: dryRun ? "var(--toggle-on-bg)" : "var(--toggle-off-bg)" }}>
-            <div className="absolute top-0.5 h-5.5 w-5.5 rounded-full" style={{ width: 22, height: 22, backgroundColor: "var(--toggle-on-knob)", transform: `translateX(${dryRun ? 20 : 2}px)`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+            <div className="absolute top-0.5 h-5.5 w-5.5 rounded-full" style={{ width: 22, height: 22, backgroundColor: "var(--toggle-on-knob)", transform: `translateX(${dryRun ? 20 : 2}px)`, boxShadow: "var(--shadow-sm)" }} />
           </button>
         } />
       </Card>
@@ -191,7 +191,7 @@ export default function OrganizePanel() {
             <div><div className="text-2xl font-bold" style={{ color: "var(--text-secondary)" }}>{result.skipped}</div><div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Skipped</div></div>
           </div>
           {result.errors.length > 0 && (
-            <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: "rgba(255,59,48,0.06)" }}>
+            <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: "var(--accent-soft)" }}>
               <p className="mb-1 text-xs font-medium" style={{ color: "var(--danger)" }}>Errors</p>
               <ul className="space-y-0.5">{result.errors.map((err, i) => <li key={i} className="text-xs" style={{ color: "var(--danger)" }}>{err}</li>)}</ul>
             </div>

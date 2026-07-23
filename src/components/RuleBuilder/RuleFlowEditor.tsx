@@ -175,7 +175,7 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
         source: lastId,
         target: condId,
         animated: true,
-        style: { stroke: "#38BDF8" },
+        style: { stroke: "var(--info)" },
       });
       lastId = condId;
       yOffset += 150;
@@ -203,7 +203,7 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
         source: lastId,
         target: actionId,
         animated: true,
-        style: { stroke: "#34D399" },
+        style: { stroke: "var(--success)" },
       });
       lastId = actionId;
       yOffset += 150;
@@ -230,7 +230,7 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
         source: lastId,
         target: condId,
         animated: true,
-        style: { stroke: "#38BDF8" },
+        style: { stroke: "var(--info)" },
       });
       lastId = condId;
       yOffset += 150;
@@ -255,7 +255,7 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
         source: lastId,
         target: actionId,
         animated: true,
-        style: { stroke: "#34D399" },
+        style: { stroke: "var(--success)" },
       });
     }
 
@@ -397,12 +397,12 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
           fitView
           proOptions={{ hideAttribution: true }}
         >
-          <Controls className="!bg-[#0a0a0a] !border-white/10 !rounded-lg" />
+          <Controls className="!rounded-lg" style={{ backgroundColor: "var(--bg-elevated)", borderColor: "var(--border-default)" }} />
           <Background
             variant={BackgroundVariant.Dots}
             gap={20}
             size={1}
-            color="rgba(255,255,255,0.05)"
+            color="var(--border-default)"
           />
         </ReactFlow>
       </div>

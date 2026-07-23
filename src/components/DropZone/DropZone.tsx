@@ -80,16 +80,24 @@ export default function DropZone({ onFilesDropped }: DropZoneProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col items-center gap-4 rounded-3xl border-2 border-dashed border-afo-purple/60 bg-afo-purple/10 px-16 py-12"
+            className="flex flex-col items-center gap-4 rounded-3xl border-2 border-dashed px-16 py-12"
+            style={{
+              borderColor: "var(--accent)",
+              backgroundColor: "var(--accent-soft)",
+            }}
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-afo-purple/20">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: "var(--accent-soft)" }}
+            >
               <svg
                 width="32"
                 height="32"
@@ -99,14 +107,16 @@ export default function DropZone({ onFilesDropped }: DropZoneProps) {
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-afo-purple"
+                style={{ color: "var(--accent)" }}
               >
                 <path d="M12 5v14M5 12l7-7 7 7" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="text-lg font-semibold text-white/90">Drop files or folders here</p>
-              <p className="mt-1 text-sm text-white/40">
+              <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                Drop files or folders here
+              </p>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
                 Files will be added to the organize panel
               </p>
             </div>

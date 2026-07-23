@@ -116,11 +116,11 @@ export default function CommandPalette() {
         keywords: ["settings", "preferences", "config"],
       },
       {
-        id: "action-scan",
-        label: "Go to Organize",
-        category: "Actions",
-        action: () => navigate("organize"),
-        keywords: ["scan", "directory", "folder", "analyze"],
+        id: "nav-capture",
+        label: "Go to Live Capture",
+        category: "Navigate",
+        action: () => navigate("capture"),
+        keywords: ["capture", "live", "watch", "monitor"],
       },
       {
         id: "action-undo",
@@ -231,6 +231,14 @@ export default function CommandPalette() {
 
   let flatIndex = 0;
 
+  const panelBg = "var(--bg-elevated)";
+  const panelBorder = "var(--border-default)";
+  const textPri = "var(--text-primary)";
+  const textSec = "var(--text-secondary)";
+  const textTer = "var(--text-tertiary)";
+  const accentSoft = "var(--accent-soft)";
+  const accent = "var(--accent)";
+
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
@@ -238,20 +246,32 @@ export default function CommandPalette() {
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         onClick={() => setOpen(false)}
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-[640px] rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/50">
+      <div
+        className="relative w-full max-w-[640px] rounded-2xl border shadow-2xl"
+        style={{
+          backgroundColor: panelBg,
+          borderColor: panelBorder,
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
+        }}
+      >
         {/* Search input */}
-        <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
+        <div
+          className="flex items-center gap-3 px-5 py-4"
+          style={{ borderBottom: `1px solid ${panelBorder}` }}
+        >
           <svg
-            className="h-5 w-5 shrink-0 text-white/30"
+            className="h-5 w-5 shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            style={{ color: textTer }}
           >
             <path
               strokeLinecap="round"
@@ -265,9 +285,17 @@ export default function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a command…"
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+            className="flex-1 bg-transparent text-sm outline-none"
+            style={{ color: textPri }}
           />
-          <kbd className="hidden rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/30 sm:inline">
+          <kbd
+            className="hidden rounded-md px-2 py-0.5 text-[11px] sm:inline"
+            style={{
+              border: `1px solid ${panelBorder}`,
+              backgroundColor: accentSoft,
+              color: textTer,
+            }}
+          >
             esc
           </kbd>
         </div>
@@ -275,12 +303,15 @@ export default function CommandPalette() {
         {/* Results */}
         <div ref={listRef} className="max-h-[360px] overflow-y-auto p-2">
           {filtered.length === 0 && (
-            <div className="py-8 text-center text-sm text-white/30">No commands found.</div>
+            <div className="py-8 text-center text-sm" style={{ color: textTer }}>No commands found.</div>
           )}
 
           {[...grouped.entries()].map(([category, commands]) => (
             <div key={category}>
-              <div className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-white/20">
+              <div
+                className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider"
+                style={{ color: textTer }}
+              >
                 {category}
               </div>
               {commands.map((cmd) => {
@@ -293,20 +324,22 @@ export default function CommandPalette() {
                     data-cmd-index={idx}
                     onClick={cmd.action}
                     onMouseEnter={() => setActiveIndex(idx)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-150 ${
-                      isActive
-                        ? "bg-afo-purple/15 text-white"
-                        : "text-white/60 hover:bg-white/[0.04]"
-                    } ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
-                    style={{ transitionDelay: visible ? `${idx * 25}ms` : "0ms" }}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-150"
+                    style={{
+                      backgroundColor: isActive ? accentSoft : "transparent",
+                      color: isActive ? textPri : textSec,
+                      opacity: visible ? 1 : 0,
+                      transform: visible ? "translateY(0)" : "translateY(4px)",
+                      transitionDelay: visible ? `${idx * 25}ms` : "0ms",
+                    }}
                   >
                     <span className="flex-1 truncate">{cmd.label}</span>
                     <span
-                      className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-                        isActive
-                          ? "bg-afo-purple/20 text-afo-purple"
-                          : "bg-white/[0.06] text-white/25"
-                      }`}
+                      className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{
+                        backgroundColor: isActive ? accentSoft : "var(--bg-inset)",
+                        color: isActive ? accent : textTer,
+                      }}
                     >
                       {cmd.category}
                     </span>
@@ -318,17 +351,29 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer hint */}
-        <div className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2.5 text-[11px] text-white/20">
+        <div
+          className="flex items-center gap-4 px-5 py-2.5 text-[11px]"
+          style={{ borderTop: `1px solid ${panelBorder}`, color: textTer }}
+        >
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5">↑↓</kbd>
+            <kbd
+              className="rounded px-1.5 py-0.5"
+              style={{ border: `1px solid ${panelBorder}`, backgroundColor: accentSoft }}
+            >↑↓</kbd>
             navigate
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5">↵</kbd>
+            <kbd
+              className="rounded px-1.5 py-0.5"
+              style={{ border: `1px solid ${panelBorder}`, backgroundColor: accentSoft }}
+            >↵</kbd>
             select
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5">
+            <kbd
+              className="rounded px-1.5 py-0.5"
+              style={{ border: `1px solid ${panelBorder}`, backgroundColor: accentSoft }}
+            >
               {modKey}K
             </kbd>
             toggle

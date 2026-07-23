@@ -91,7 +91,7 @@ export default function DuplicatesPanel() {
         </Button>
       </Card>
 
-      {actionError && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "rgba(255,59,48,0.06)", color: "var(--danger)" }}>{actionError}</div>}
+      {actionError && <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: "var(--accent-soft)", color: "var(--danger)" }}>{actionError}</div>}
 
       {/* Results Summary */}
       {groups.length > 0 && (
@@ -136,7 +136,7 @@ export default function DuplicatesPanel() {
                       <div className="truncate text-sm" style={{ color: "var(--text-primary)" }}>{file.path}</div>
                       <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>{formatBytes(file.size)}</div>
                     </div>
-                    {file.is_keeper && <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "rgba(52,199,89,0.1)", color: "var(--success)" }}>Keeper</span>}
+                    {file.is_keeper && <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: "var(--accent-soft)", color: "var(--success)" }}>Keeper</span>}
                   </label>
                 ))}
               </div>
