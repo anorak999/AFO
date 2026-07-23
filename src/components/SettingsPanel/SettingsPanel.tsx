@@ -237,7 +237,7 @@ function AboutSection() {
       <Card>
         <CardHeader>About AFO</CardHeader>
         <CardDescription>Advanced File Organizer</CardDescription>
-        <CardRow label="Version" rightValue="2.5.43" />
+        <CardRow label="Version" rightValue="2.5.44" />
         <CardRow label="Build" rightValue="2026-07-21" />
         <CardRow label="Engine" rightValue="Tauri v2 + Rust" />
         <CardRow label="License" rightValue="MIT" />
