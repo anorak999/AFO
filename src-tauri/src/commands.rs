@@ -626,6 +626,7 @@ pub struct CategoryBreakdown {
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StorageBreakdownResult {
     pub directory: String,
     pub total_scanned_bytes: u64,

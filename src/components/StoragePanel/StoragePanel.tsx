@@ -69,6 +69,12 @@ export default function StoragePanel() {
         color: CATEGORY_COLOR[c.label] ?? "var(--cat-other)",
       })) ?? [];
 
+  // Defensive: compute total from categories if backend field is missing/malformed
+  const totalBytes =
+    result?.totalScannedBytes ||
+    result?.categories.reduce((sum, c) => sum + c.bytes, 0) ||
+    0;
+
   return (
     <div className="flex flex-col gap-5 p-6">
       <div>
@@ -135,12 +141,12 @@ export default function StoragePanel() {
                   className="text-[12.5px]"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  {formatBytes(result.totalScannedBytes)} scanned
+                  {formatBytes(totalBytes)} scanned
                 </span>
               </div>
               <StorageBar
                 segments={segments}
-                totalBytes={result.totalScannedBytes}
+                totalBytes={totalBytes}
               />
               <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2.5">
                 {segments.map((s) => (
