@@ -299,19 +299,27 @@ pub async fn process_file_event(
                         };
                         let _ = journal::record_operation(&entry);
 
+                        let mut emit_act = true;
+                        if let Some(cr) = &capture_result {
+                            if matches!(cr, crate::core::capture::HandleResult::AutoOrganized) {
+                                emit_act = false;
+                            }
+                        }
                         match std::fs::rename(path, &target) {
                             Ok(()) => {
                                 let dest_str = target.to_string_lossy().to_string();
                                 info!(source = path, dest = dest_str, "Auto-organized file");
-                                let _ = app.emit(
-                                    "afo://activity",
-                                    serde_json::json!({
-                                        "type": "move",
-                                        "source": path,
-                                        "destination": dest_str,
-                                        "rule": rule.name,
-                                    }),
-                                );
+                                if emit_act {
+                                    let _ = app.emit(
+                                        "afo://activity",
+                                        serde_json::json!({
+                                            "type": "move",
+                                            "source": path,
+                                            "destination": dest_str,
+                                            "rule": rule.name,
+                                        }),
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!(error = %e, path = path, "Failed to auto-organize file");
@@ -337,15 +345,23 @@ pub async fn process_file_event(
                             Ok(_) => {
                                 let dest_str = target.to_string_lossy().to_string();
                                 info!(source = path, dest = dest_str, "Auto-copied file");
-                                let _ = app.emit(
-                                    "afo://activity",
-                                    serde_json::json!({
-                                        "type": "copy",
-                                        "source": path,
-                                        "destination": dest_str,
-                                        "rule": rule.name,
-                                    }),
-                                );
+                                let mut emit_activity = true;
+                                if let Some(ref cr) = capture_result {
+                                    if matches!(cr, crate::core::capture::HandleResult::AutoOrganized) {
+                                        emit_activity = false;
+                                    }
+                                }
+                                if emit_activity {
+                                    let _ = app.emit(
+                                        "afo://activity",
+                                        serde_json::json!({
+                                            "type": "copy",
+                                            "source": path,
+                                            "destination": dest_str,
+                                            "rule": rule.name,
+                                        }),
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!(error = %e, path = path, "Failed to auto-copy file");
@@ -382,15 +398,23 @@ pub async fn process_file_event(
                             Ok(()) => {
                                 let dest_str = target.to_string_lossy().to_string();
                                 info!(source = path, dest = dest_str, "Auto-renamed file");
-                                let _ = app.emit(
-                                    "afo://activity",
-                                    serde_json::json!({
-                                        "type": "rename",
-                                        "source": path,
-                                        "destination": dest_str,
-                                        "rule": rule.name,
-                                    }),
-                                );
+                                let mut emit_activity = true;
+                                if let Some(ref cr) = capture_result {
+                                    if matches!(cr, crate::core::capture::HandleResult::AutoOrganized) {
+                                        emit_activity = false;
+                                    }
+                                }
+                                if emit_activity {
+                                    let _ = app.emit(
+                                        "afo://activity",
+                                        serde_json::json!({
+                                            "type": "rename",
+                                            "source": path,
+                                            "destination": dest_str,
+                                            "rule": rule.name,
+                                        }),
+                                    );
+                                }
                             }
                             Err(e) => {
                                 error!(error = %e, path = path, "Failed to auto-rename file");
