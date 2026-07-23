@@ -847,3 +847,237 @@ Comprehensive pass to wire all 13 dead features identified in the Feature Status
 
 ### Version
 - Bumped to 2.5.3 in package.json, Cargo.toml, tauri.conf.json, Sidebar, SettingsPanel
+
+## 2026-07-22 — v2.5.31: History Loading Fix
+
+### Problem
+History panel stuck on "Loading..." on fresh install with empty journal database.
+
+### Fix
+- `7b5e43b` fix: History panel stuck on Loading on fresh install with empty journal
+
+### Version
+- Bumped to 2.5.31
+
+## 2026-07-22 — v2.5.33: Rule Builder Cleanup
+
+### Changes
+- `f587820` fix: remove duplicate Create Rule button in Rule Builder
+- `a626282` feat: add Choose Directory button to Rule Builder test rules
+
+### Version
+- Bumped to 2.5.33
+
+## 2026-07-22 — v2.5.35: Live Activity Feed
+
+### Changes
+- `7b83a17` feat: add live activity feed for file watcher events
+  - Listen to `afo://activity` events in App.tsx
+  - Show toast notifications on file moves
+  - Add Live Activity section in History panel with real-time event list
+  - Events include file name, destination, triggering rule, and timestamp
+
+### Version
+- Bumped to 2.5.35
+
+## 2026-07-22 — v2.5.36: Preset Rule Templates
+
+### Changes
+- `8a57185` feat: add preset rule templates for everyday file organization
+  - 10 built-in presets: Images, Documents, Videos, Music, Archives, Sort by Date, Downloads, Screenshots, Large Files, Code Files
+  - Grid UI in Rule Builder with one-click add
+  - Presets show as added (dimmed) once imported
+  - Users can still create fully custom rules
+
+### Version
+- Bumped to 2.5.36
+
+## 2026-07-22 — v2.5.37: Live Capture System
+
+### Changes
+- `72bfdea` feat: live capture system — real-time monitoring, capture modes, permission gates, file index
+  - New `capture.rs` module with SQLite tables (file_index, file_changes, pending_actions)
+  - Three capture modes: AutoOrganize, NotifyOnly, FullCapture
+  - Per-directory configuration persisted to `capture_config.json`
+  - File indexing with search and extension filtering
+  - Change log with timeline visualization
+  - Pending actions queue with batch approve/reject
+  - Dashboard with per-dir stats (file count, disk usage, changes/min)
+  - Live Capture panel in sidebar with tabbed view (Dashboard / File Index / Timeline)
+  - 17 new Tauri commands for capture API
+  - Integration hook in `watcher.rs` for pre-check before rule evaluation
+
+### Version
+- Bumped to 2.5.37
+
+## 2026-07-22 — v2.5.38: Live Capture Bugfixes
+
+### Changes
+- `ed67442` fix: Live Capture browse button, input field, and N+1 query pattern
+  - Browse: match SettingsPanel pattern — open dialog sets input, user confirms with Add
+  - Handle Tauri v2 `open()` returning `string | string[] | null`
+  - Add dir to `capture_config.json` via `setCaptureMode` when adding
+  - Parallelize `getDirStats` calls with `Promise.all` (was N+1 sequential)
+  - Add error toasts for browse/add/mode-change failures
+  - Add aria-labels to approve/reject buttons
+  - Show toast on successful scan with file count
+
+### Version
+- Bumped to 2.5.38
+
+## 2026-07-22 — v2.5.39: Permission-Denied Directory Handling
+
+### Changes
+- `04573b7` fix: handle permission-denied directories gracefully
+  - Check read permission before attempting to watch in `watcher.rs`
+  - Show descriptive error for restricted dirs (Wine/Proton symlinks, etc.)
+  - Still add dir to `capture_config.json` even if watching fails
+  - User can manually scan dirs that can't be watched in real-time
+  - Info toast instead of error when watch fails but config is saved
+
+### Version
+- Bumped to 2.5.39
+
+## 2026-07-23 — v2.5.40: Real-Time Capture Detection Wired Up
+
+### Changes
+- `3e607f6` feat: wire up capture hook in watcher for real-time detection
+  - `process_file_event` now calls `capture::handle_file_event` before rule evaluation
+  - NotifyOnly mode creates pending actions and emits `afo://pending-action`
+  - FullCapture mode indexes files and skips rule evaluation
+  - AutoOrganize mode proceeds with existing behavior (unchanged)
+  - App.tsx listens for `afo://pending-action` and shows toast notification
+  - Fix circular dependency in `queue_move_for_approval`
+
+### Version
+- Bumped to 2.5.40
+
+## 2026-07-23 — v2.5.41: Faster Detection + Debug Logging
+
+### Changes
+- `ec11cf2` fix: reduce debounce to 100ms, add debug logging, fix sidebar version
+  - Debounce: 300ms → 100ms for faster detection
+  - Rate limit: 10/s → 50/s for burst downloads
+  - Watcher now catches Remove events (file cleanup)
+  - Added debug logging at debounce flush and capture hook
+  - Improved `find_watched_dir_for_path` with longest-match and trailing-slash handling
+  - Fixed sidebar version (was hardcoded v2.5.34)
+
+### Version
+- Bumped to 2.5.41
+
+## 2026-07-23 — v2.5.42: Dark Mode Cleanup
+
+### Changes
+- `5a045c9` fix: replace hardcoded colors with CSS vars for dark mode support
+  - CommandPalette: 16+ hardcoded colors replaced with CSS vars
+  - DropZone: text/accent colors use CSS vars, dark overlay kept intentional
+  - Toast: info/error/success variants use CSS vars
+  - OrganizePanel: toggle shadow uses `var(--shadow-sm)`, error bg uses `var(--accent-soft)`
+  - HistoryPanel: OP_COLORS and error bg use CSS vars
+  - DuplicatesPanel: error bg and keeper badge use CSS vars
+  - RuleBuilder: error bg uses `var(--accent-soft)`
+  - RuleFlowEditor: edge strokes use CSS vars, controls use CSS vars
+
+### Version
+- Bumped to 2.5.42
+
+## 2026-07-23 — v2.5.43: Storage Breakdown
+
+### Changes
+- `25ab1e3` feat: Storage Breakdown panel — per-directory file category analysis
+  - New StoragePanel with directory picker and segmented bar visualization
+  - Backend: `scan_storage_breakdown` command using existing `CategoryConfig`
+  - Reuses existing file-type-to-category classifier (consistent with Organize)
+  - Recursive directory walk with permission-denied graceful handling
+  - Async via `tokio::task::spawn_blocking` (no UI freeze)
+  - StorageBar component: segmented bar + legend, macOS Storage pane style
+  - Sidebar entry with HardDrive icon between Duplicates and History
+  - Category tokens: `--cat-images/documents/audio/video/archives/code/other`
+  - Dark mode: all category tokens have dark variants
+
+- `244cc2a` fix: Storage Breakdown NaN — missing serde rename + defensive fallback
+  - Add `#[serde(rename_all = "camelCase")]` to `StorageBreakdownResult`
+  - Add defensive fallback: compute `totalBytes` from categories if backend field missing
+  - Root cause: `total_scanned_bytes` (snake_case) vs `totalScannedBytes` (camelCase)
+
+### Version
+- Bumped to 2.5.43
+
+## 2026-07-23 — v2.5.44: Performance Efficiency Audit
+
+### Changes
+- `5b2a854` perf: efficiency audit — 7 high-impact fixes
+
+  Backend:
+  - `journal.rs`: Add index on `operations.reverted` + `busy_timeout` for undo/redo queries
+  - `watcher.rs`: Consolidate double Mutex lock into single acquisition (50% less contention)
+  - `rule_engine.rs`: RwLock for regex cache (concurrent reads no longer serialized)
+  - `duplicates.rs`: Eliminate triple `fs::metadata` per file (carry metadata through pipeline)
+  - `organizer.rs`: Check file extension before metadata extraction (skip non-media files)
+  - `lib.rs`: Increase channel capacity 100→1000 (prevent event loss on bulk ops)
+
+  Frontend:
+  - `App.tsx`: Conditional rendering instead of `display:none` (only mount active panel)
+    - Eliminates 6 unnecessary component mounts at startup
+    - Stops LiveCapture 5s polling when panel inactive
+    - Stops ChangeTimeline 10s polling when panel inactive
+    - Saves ~54 API calls/min of wasted polling
+
+### Version
+- Bumped to 2.5.44
+
+## 2026-07-23 — v2.5.45: Security + Journal Integrity Fixes
+
+### Changes
+- `bd271da` release: v2.5.45 — critical security + journal integrity fixes
+  - Re-enable CSP with proper Tauri v2 policy
+  - Scheduled operations now record journal entries (undoable)
+  - `undo_operation` checks reverted flag to prevent double-reverse
+  - `enableUndoRedo` toggle persists and controls UI visibility
+  - `retry_move` uses `tokio::time::sleep` to avoid blocking runtime
+
+- `6a8de8c` fix: watcher events not detected — switch to unbounded channel
+  - The notify callback runs on its own thread without a Tokio runtime
+  - Bounded channels require `blocking_send` which needs a runtime, causing events to be silently dropped
+  - Switching to `unbounded_channel` allows using `send()` which works without a runtime
+  - Fixes Live Capture file event detection
+
+### Version
+- Bumped to 2.5.45
+
+## 2026-07-23 — v2.5.47: Sidebar Collapse + Live Capture Toast Fix
+
+### Sidebar Collapse-to-Icons
+- Toggle button (PanelLeftClose / PanelLeftOpen) at sidebar bottom
+- Collapses from 240px to 60px icon-only rail (VS Code activity bar style)
+- Brand/logo collapses to centered funnel icon, "AFO" wordmark fades out
+- Nav labels hide, icon tiles remain centered with `title` attribute for tooltips
+- Active-item highlight (layoutId spring animation) renders correctly at both widths
+- Framer Motion spring animation on width (`bounce: 0.12, duration: 0.35`)
+- Label text animates with opacity/width transitions via `AnimatePresence`
+- Collapsed state persisted to `localStorage("afo-sidebar-collapsed")`
+- Main content reflows via `flex-1 min-w-0` (no gap, no fixed width)
+
+### Live Capture Toast Fix
+- Diagnosed as event double-fire: both `afo://pending-action` and `afo://file-change` emitted for NotifyOnly mode, causing competing toasts where the first could be auto-dismissed
+- Consolidated to single `afo://file-change` event with typed `change_type` field (`pending` / `captured` / `auto_organize` / `detected`)
+- Added **Live Capture** notification toggle in Settings > Notifications (matches existing `operationComplete`/`scheduledRun`/`errorAlerts` pattern)
+- Toast now respects the toggle — reads `localStorage("afo-notification-settings").liveCapture`
+
+### Files Modified
+- `src/components/Sidebar/Sidebar.tsx` — collapse state, toggle button, animations, tooltips
+- `src/App.tsx` — consolidated event listeners, notification settings check
+- `src/components/SettingsPanel/SettingsPanel.tsx` — liveCapture toggle, version label
+- `src-tauri/src/core/watcher.rs` — `afo://file-change` event emission for all modes
+- `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `package.json` — version bump
+
+### Build Verification
+- `cargo check` — ✅ Clean
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb,rpm` — ✅ Both packages built
+
+### Release
+- Tag: `v2.5.47`
+- Artifacts: `AFO_2.5.47_amd64.deb` (~6.9 MB), `AFO-2.5.47-1.x86_64.rpm` (~6.9 MB)
+- GitHub release: https://github.com/anorak999/AFO/releases/tag/v2.5.47
