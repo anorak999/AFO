@@ -26,8 +26,8 @@ interface TriggerNodeData {
 
 function TriggerNode({ data }: { data: TriggerNodeData }) {
   return (
-    <div className="rounded-xl border border-afo-purple/40 bg-afo-purple/10 px-4 py-3 text-sm font-medium text-white shadow-lg">
-      <div className="text-[10px] uppercase tracking-wider text-afo-purple/60 mb-1">Trigger</div>
+    <div className="rounded-xl border border-afo-purple/40 bg-afo-purple/10 px-4 py-3 text-sm font-medium text-[var(--text-primary)] shadow-lg">
+      <div className="text-[10px] uppercase tracking-wider text-afo-purple mb-1">Trigger</div>
       {data.label}
       <Handle type="source" position={Position.Bottom} className="!bg-afo-purple" />
     </div>
@@ -43,14 +43,14 @@ interface ConditionNodeData {
 
 function ConditionNode({ data }: { data: ConditionNodeData }) {
   return (
-    <div className="rounded-xl border border-afo-sky/40 bg-afo-sky/10 px-4 py-3 text-sm text-white shadow-lg min-w-[200px]">
+    <div className="rounded-xl border border-afo-sky/40 bg-afo-sky/10 px-4 py-3 text-sm text-[var(--text-primary)] shadow-lg min-w-[200px]">
       <Handle type="target" position={Position.Top} className="!bg-afo-sky" />
-      <div className="text-[10px] uppercase tracking-wider text-afo-sky/60 mb-2">Condition</div>
+      <div className="text-[10px] uppercase tracking-wider text-afo-sky mb-2">Condition</div>
       <div className="space-y-1.5">
         <select
           value={data.field}
           onChange={(e) => data.onUpdate(e.target.value, data.operator, data.value)}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none"
+          className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none"
         >
           <option value="Extension">Extension</option>
           <option value="Name">Name</option>
@@ -61,7 +61,7 @@ function ConditionNode({ data }: { data: ConditionNodeData }) {
         <select
           value={data.operator}
           onChange={(e) => data.onUpdate(data.field, e.target.value, data.value)}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none"
+          className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none"
         >
           <option value="Equals">Equals</option>
           <option value="Contains">Contains</option>
@@ -76,7 +76,7 @@ function ConditionNode({ data }: { data: ConditionNodeData }) {
           value={data.value}
           onChange={(e) => data.onUpdate(data.field, data.operator, e.target.value)}
           placeholder="value"
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 placeholder:text-white/30 outline-none"
+          className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none"
         />
       </div>
       <Handle type="source" position={Position.Bottom} className="!bg-afo-sky" />
@@ -92,14 +92,14 @@ interface ActionNodeData {
 
 function ActionNode({ data }: { data: ActionNodeData }) {
   return (
-    <div className="rounded-xl border border-afo-emerald/40 bg-afo-emerald/10 px-4 py-3 text-sm text-white shadow-lg min-w-[200px]">
+    <div className="rounded-xl border border-afo-emerald/40 bg-afo-emerald/10 px-4 py-3 text-sm text-[var(--text-primary)] shadow-lg min-w-[200px]">
       <Handle type="target" position={Position.Top} className="!bg-afo-emerald" />
-      <div className="text-[10px] uppercase tracking-wider text-afo-emerald/60 mb-2">Action</div>
+      <div className="text-[10px] uppercase tracking-wider text-afo-emerald mb-2">Action</div>
       <div className="space-y-1.5">
         <select
           value={data.actionType}
           onChange={(e) => data.onUpdate(e.target.value, data.value)}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 outline-none"
+          className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none"
         >
           <option value="Move">Move</option>
           <option value="Copy">Copy</option>
@@ -110,7 +110,7 @@ function ActionNode({ data }: { data: ActionNodeData }) {
           value={data.value}
           onChange={(e) => data.onUpdate(data.actionType, e.target.value)}
           placeholder={data.actionType === "Rename" ? "{name}_sorted.{ext}" : "/destination/path"}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 placeholder:text-white/30 outline-none"
+          className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none"
         />
       </div>
     </div>
@@ -367,9 +367,9 @@ export default function RuleFlowEditor({ rule, onSave, onCancel }: RuleFlowEdito
   }
 
   return (
-    <div className="flex flex-col h-[500px] rounded-xl border border-white/[0.06] bg-white/[0.02]">
+    <div className="flex flex-col h-[500px] rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2">
+      <div className="flex items-center gap-2 border-b border-[var(--border-default)] px-4 py-2">
         <Button variant="secondary" onClick={handleAddCondition} className="text-xs px-3 py-1.5">
           + Condition
         </Button>
