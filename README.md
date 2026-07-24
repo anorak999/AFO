@@ -59,10 +59,6 @@ go your way.
 </tr>
 </table>
 
-<div align="center">
-<img src="https://via.placeholder.com/850x100/EBEBEE/1D1D1F?text=%E2%9A%A1+Cmd%2FCtrl%2BK+Command+Palette+%C2%B7+%F0%9F%8C%99+Dark+%2F+Light+%C2%B7+%F0%9F%93%81+Drag+%26+Drop" width="850" />
-</div>
-
 <br/>
 
 ## Quick Start
