@@ -259,6 +259,7 @@ export default function CommandPalette() {
           borderColor: panelBorder,
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
         <div

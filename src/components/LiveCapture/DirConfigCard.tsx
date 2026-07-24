@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Scan } from "lucide-react";
+import { Scan, Trash2 } from "lucide-react";
 import { showToast } from "../Toast";
-import { type DirectoryConfig, type DirStats, type CaptureMode, setCaptureMode, setDirEnabled, scanAndIndex } from "../../lib/tauri-bridge";
+import { type DirectoryConfig, type DirStats, type CaptureMode, setCaptureMode, setDirEnabled, scanAndIndex, unwatchDirectory, removeDirectory } from "../../lib/tauri-bridge";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
 
@@ -59,6 +59,21 @@ export default function DirConfigCard({ config, stats, onRemoved }: Props) {
     }
   }
 
+  async function handleRemove() {
+    try {
+      // Try to unwatch (may fail if not actively watched)
+      try {
+        await unwatchDirectory(config.path);
+      } catch { /* ignore - dir may not have been actively watched */ }
+      // Always remove from capture config
+      await removeDirectory(config.path);
+      showToast(`Removed: ${config.path}`, "info");
+      onRemoved();
+    } catch (e) {
+      showToast(`Failed to remove: ${e}`, "error");
+    }
+  }
+
   return (
     <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: "var(--bg-inset)", border: "1px solid var(--border-default)" }}>
       <div className="flex items-center gap-3">
@@ -69,6 +84,16 @@ export default function DirConfigCard({ config, stats, onRemoved }: Props) {
         <Button variant="secondary" onClick={handleScan} disabled={scanning} className="text-xs px-2 py-1 gap-1">
           <Scan size={12} /> {scanning ? "Scanning..." : "Scan"}
         </Button>
+        <button
+          onClick={handleRemove}
+          className="flex items-center justify-center rounded-lg p-1.5 transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--danger)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-tertiary)")}
+          title="Remove directory"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
 
       {/* Mode selector */}

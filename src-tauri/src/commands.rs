@@ -1,5 +1,6 @@
 use crate::core::capture;
 use crate::core::cloud_sync;
+use crate::core::disks;
 use crate::core::duplicates;
 use crate::core::journal;
 use crate::core::metadata;
@@ -531,6 +532,11 @@ pub async fn set_dir_enabled_cmd(dir: String, enabled: bool) -> Result<(), Strin
 }
 
 #[tauri::command]
+pub async fn remove_directory_cmd(dir: String) -> Result<(), String> {
+    capture::remove_directory(&dir)
+}
+
+#[tauri::command]
 pub async fn search_file_index(
     query: String,
     ext_filter: Option<String>,
@@ -622,6 +628,8 @@ pub struct StorageBreakdownResult {
     pub directory: String,
     pub total_scanned_bytes: u64,
     pub categories: Vec<CategoryBreakdown>,
+    pub total_space: u64,
+    pub available_space: u64,
 }
 
 #[tauri::command]
@@ -706,14 +714,39 @@ pub async fn scan_storage_breakdown(directory: String) -> Result<StorageBreakdow
             .collect();
         categories.sort_by(|a, b| b.bytes.cmp(&a.bytes));
 
+        // Get disk space for the directory's mount point
+        let (total_space, available_space) = {
+            use sysinfo::Disks;
+            let disks = Disks::new_with_refreshed_list();
+            let dir_path = std::path::Path::new(&dir_clone);
+            // Find the disk with the longest matching mount point
+            let mut best_match: Option<(u64, u64)> = None;
+            let mut best_len = 0;
+            for disk in disks.iter() {
+                let mount = disk.mount_point();
+                if dir_path.starts_with(mount) && mount.to_string_lossy().len() > best_len {
+                    best_len = mount.to_string_lossy().len();
+                    best_match = Some((disk.total_space(), disk.available_space()));
+                }
+            }
+            best_match.unwrap_or((0, 0))
+        };
+
         StorageBreakdownResult {
             directory: dir_clone,
             total_scanned_bytes: total_bytes,
             categories,
+            total_space,
+            available_space,
         }
     })
     .await
     .map_err(|e| e.to_string())?;
 
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn get_system_disks() -> Result<Vec<disks::DiskInfo>, String> {
+    Ok(disks::get_system_disks())
 }

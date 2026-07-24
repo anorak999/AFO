@@ -14,7 +14,7 @@
   /* Borders */
   --border-default: rgba(0, 0, 0, 0.08);
   --border-strong: rgba(0, 0, 0, 0.12);
-  --border-focus: #007aff;
+  --border-focus: #0071E3;
 
   /* Text */
   --text-primary: #1d1d1f;
@@ -23,9 +23,9 @@
   --text-inverse: #ffffff;
 
   /* Accent */
-  --accent: #007aff;
-  --accent-hover: #0066d6;
-  --accent-soft: rgba(0, 122, 255, 0.08);
+  --accent: #0071E3;
+  --accent-hover: #005BB5;
+  --accent-soft: rgba(0, 113, 227, 0.08);
 
   /* Semantic */
   --success: #34c759;
@@ -50,8 +50,8 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 
   /* Icon tile backgrounds */
-  --icon-organize: rgba(0, 122, 255, 0.1);
-  --icon-organize-fg: #007aff;
+  --icon-organize: rgba(0, 113, 227, 0.1);
+  --icon-organize-fg: #0071E3;
   --icon-rules: rgba(175, 82, 222, 0.1);
   --icon-rules-fg: #af52de;
   --icon-duplicates: rgba(255, 149, 0, 0.1);
@@ -60,6 +60,8 @@
   --icon-history-fg: #34c759;
   --icon-settings: rgba(142, 142, 147, 0.1);
   --icon-settings-fg: #8e8e93;
+  --icon-tutorial: rgba(0, 113, 227, 0.1);
+  --icon-tutorial-fg: #0071E3;
   --icon-capture: rgba(255, 59, 48, 0.1);
   --icon-capture-fg: #ff3b30;
   --icon-storage: rgba(88, 86, 214, 0.1);
@@ -67,7 +69,7 @@
 
   /* Storage breakdown category colors */
   --cat-images: #ff3b30;
-  --cat-documents: #007aff;
+  --cat-documents: #0071E3;
   --cat-audio: #af52de;
   --cat-video: #ff9500;
   --cat-archives: #34c759;
@@ -88,16 +90,16 @@
 
   --border-default: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --border-focus: #0a84ff;
+  --border-focus: #409cff;
 
   --text-primary: #f5f5f7;
   --text-secondary: #98989d;
   --text-tertiary: #636366;
   --text-inverse: #1d1d1f;
 
-  --accent: #0a84ff;
-  --accent-hover: #409cff;
-  --accent-soft: rgba(10, 132, 255, 0.12);
+  --accent: #409cff;
+  --accent-hover: #66b3ff;
+  --accent-soft: rgba(64, 156, 255, 0.12);
 
   --success: #30d158;
   --warning: #ff9f0a;
@@ -117,8 +119,8 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
 
-  --icon-organize: rgba(10, 132, 255, 0.15);
-  --icon-organize-fg: #0a84ff;
+  --icon-organize: rgba(64, 156, 255, 0.15);
+  --icon-organize-fg: #409cff;
   --icon-rules: rgba(191, 90, 242, 0.15);
   --icon-rules-fg: #bf5af2;
   --icon-duplicates: rgba(255, 159, 10, 0.15);
@@ -127,6 +129,8 @@
   --icon-history-fg: #30d158;
   --icon-settings: rgba(142, 142, 147, 0.15);
   --icon-settings-fg: #8e8e93;
+  --icon-tutorial: rgba(64, 156, 255, 0.15);
+  --icon-tutorial-fg: #409cff;
   --icon-capture: rgba(255, 69, 58, 0.15);
   --icon-capture-fg: #ff453a;
   --icon-storage: rgba(122, 121, 240, 0.15);

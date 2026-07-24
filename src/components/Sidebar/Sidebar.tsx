@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FolderOpen, GitBranch, Copy, HardDrive, History, Settings, Radio, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { FolderOpen, GitBranch, Copy, HardDrive, History, Settings, Radio, BookOpen, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppStore, type Panel } from "../../lib/store";
 import logo from "../../assets/logo.png";
 
@@ -11,6 +11,7 @@ const NAV_ITEMS: { id: Panel; label: string; icon: typeof FolderOpen; cssVar: st
   { id: "duplicates", label: "Duplicates", icon: Copy, cssVar: "--icon-duplicates" },
   { id: "storage", label: "Storage", icon: HardDrive, cssVar: "--icon-storage" },
   { id: "history", label: "History", icon: History, cssVar: "--icon-history" },
+  { id: "tutorial", label: "Tutorial", icon: BookOpen, cssVar: "--icon-tutorial" },
   { id: "settings", label: "Settings", icon: Settings, cssVar: "--icon-settings" },
 ];
 
@@ -134,7 +135,7 @@ export default function Sidebar() {
                 transition={{ duration: 0.2 }}
                 className="whitespace-nowrap overflow-hidden"
               >
-                AFO v2.5.48
+                AFO v2.5.50-beta
               </motion.span>
             )}
           </AnimatePresence>

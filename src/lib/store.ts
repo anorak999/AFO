@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Panel = "organize" | "rules" | "duplicates" | "storage" | "history" | "settings" | "capture";
+export type Panel = "organize" | "rules" | "duplicates" | "storage" | "history" | "settings" | "capture" | "tutorial";
 
 interface AppStore {
   activePanel: Panel;

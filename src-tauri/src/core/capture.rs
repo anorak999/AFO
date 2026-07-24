@@ -211,6 +211,16 @@ pub fn get_all_dir_configs() -> Vec<DirectoryConfig> {
     load_capture_config().directories
 }
 
+pub fn remove_directory(dir: &str) -> Result<(), String> {
+    let mut config = load_capture_config();
+    let initial_len = config.directories.len();
+    config.directories.retain(|d| d.path != dir);
+    if config.directories.len() == initial_len {
+        return Err(format!("Directory not found: {}", dir));
+    }
+    save_capture_config(&config)
+}
+
 // ── File Index Operations ───────────────────────────────────────────
 
 pub fn index_file(path: &str, watched_dir: &str) -> Result<(), String> {

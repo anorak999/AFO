@@ -1141,3 +1141,79 @@ History panel stuck on "Loading..." on fresh install with empty journal database
 - Tag: `v2.5.49`
 - Artifacts: `AFO_2.5.49_amd64.deb` (~6.5 MB), `AFO-2.5.49-1.x86_64.rpm` (~6.5 MB)
 - GitHub release: https://github.com/anorak999/AFO/releases/tag/v2.5.49
+
+
+## 2026-07-23 — v2.5.50-beta: Tutorial Panel, Storage Redesign, Live Capture Remove
+
+### Summary
+Major UI improvements: tutorial as dedicated panel, macOS-style storage redesign, live capture directory removal, accent color update, and bug fixes.
+
+### Tutorial Panel (Option 2 — Dedicated Panel)
+- Replaced modal tutorial with a dedicated panel in the sidebar navigation
+- Tutorial is now a regular panel (like Organize, Settings) — no overlay, no `inert`, no focus trapping
+- 6 steps: Welcome, Quick Start, Features, How It Works, Tips & Tricks, Ready
+- Minimal design: skip link (top-right), clickable dot indicators, single centered action button
+- Auto-navigates to tutorial on first launch (localStorage check)
+- "Show Tutorial" in Settings navigates to tutorial panel
+- Eliminated all modal-related bugs (inert sticking, focus trap conflicts, stale refs)
+
+### Storage Panel Redesign (macOS Style)
+- Auto-detects system drives using `sysinfo` crate
+- Each drive shows: icon (folder/drive), name, capacity, usage bar, scan results
+- Drive detection: internal vs external (removable) drives
+- Custom directories: user can add/remove directories via Source card
+- Custom directories persist in localStorage
+- Scan shows category breakdown with colored segments and legend
+- Backend: added `get_system_disks` command, `disks.rs` module
+- Backend: added `total_space`/`available_space` to `StorageBreakdownResult`
+
+### Live Capture — Remove Directory Button
+- Added trash icon button to remove watched directories
+- Backend: added `remove_directory` function in `capture.rs`
+- Backend: added `remove_directory_cmd` command
+- Frontend: `unwatchDirectory` + `removeDirectory` on remove (handles both watcher and config)
+
+### Accent Color Update
+- Updated accent color from `#007aff` to `#0071E3` (light) and `#0a84ff` to `#409cff` (dark)
+- Updated all derived colors: hover, soft, border-focus, icon-organize, cat-documents
+- Fixed CSS variable references: `var(--accent-primary)` → `var(--accent)` across all tutorial components
+
+### Command Palette Fix
+- Added `stopPropagation` to modal card — clicking inside palette no longer closes it via backdrop
+
+### Bug Fixes
+- Fixed `inert` attribute sticking after tutorial close (stale ref issue)
+- Added unmount cleanup for inert removal
+- Tutorial backdrop click-to-close removed (only X button and "Start Organizing" dismiss)
+
+### Files Added
+- `src/components/TutorialPanel/index.tsx` — tutorial panel entry
+- `src/components/TutorialPanel/TutorialPanel.tsx` — tutorial panel component
+- `src-tauri/src/core/disks.rs` — system disk detection
+- `src/assets/folder-icon.png` — folder icon for storage
+- `src/assets/drive-icon.png` — drive icon for storage
+
+### Files Modified
+- `src/App.tsx` — removed modal tutorial, added TutorialPanel, first-launch navigation
+- `src/lib/store.ts` — removed `showTutorial` state, added `"tutorial"` to Panel type
+- `src/components/Sidebar/Sidebar.tsx` — added Tutorial nav item with accent color
+- `src/components/SettingsPanel/SettingsPanel.tsx` — "Show Tutorial" navigates to panel
+- `src/components/StoragePanel/StoragePanel.tsx` — complete redesign with drive detection
+- `src/components/LiveCapture/DirConfigCard.tsx` — added remove button
+- `src/components/CommandPalette/CommandPalette.tsx` — added stopPropagation
+- `src/styles/theme.css` — updated accent colors, added icon-tutorial colors
+- `src-tauri/Cargo.toml` — added `sysinfo` crate, version 2.5.50
+- `src-tauri/tauri.conf.json` — version 2.5.50-beta, devtools enabled
+- `src-tauri/src/lib.rs` — registered new commands
+- `src-tauri/src/commands.rs` — added `get_system_disks`, `remove_directory_cmd`, `StorageBreakdownResult` fields
+- `src-tauri/src/core/capture.rs` — added `remove_directory` function
+- `src-tauri/src/core/mod.rs` — added `disks` module
+- `src/lib/tauri-bridge.ts` — added `getSystemDisks`, `removeDirectory`, `DiskInfo` type
+
+### Build Verification
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb` — ✅ Built successfully
+
+### Version
+- Tag: `v2.5.50-beta`
+- Artifact: `AFO_2.5.50-beta_amd64.deb`

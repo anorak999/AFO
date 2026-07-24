@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { watchDirectory, unwatchDirectory, listWatchedDirectories, createSchedule, listSchedules, deleteSchedule, toggleSchedule, runScheduleNow, type WatchedDir, type Schedule } from "../../lib/tauri-bridge";
+import { useAppStore } from "../../lib/store";
 import { showToast } from "../Toast";
 import { Card, CardHeader, CardDescription, CardRow } from "../ui/Card";
 import Button from "../ui/Button";
 import Toggle from "../ui/Toggle";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { resetTutorial } from "../Tutorial";
 
 const SECTIONS = [
   { id: "general", label: "General" },
@@ -46,6 +48,7 @@ function GeneralSection() {
   const [watchedDirs, setWatchedDirs] = useState<WatchedDir[]>([]);
   const [loadingDirs, setLoadingDirs] = useState(true);
   const [newDir, setNewDir] = useState("");
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
 
   const refreshDirs = useCallback(async () => {
     try { setWatchedDirs(await listWatchedDirectories()); } catch { /* ignore */ } finally { setLoadingDirs(false); }
@@ -70,6 +73,9 @@ function GeneralSection() {
         <CardHeader>General</CardHeader>
         <CardRow label="Appearance" description="Switch between light and dark theme" control={
           <ThemeToggle />
+        } />
+        <CardRow label="Show Tutorial" description="Re-open the getting started guide" control={
+          <Button variant="secondary" onClick={() => { resetTutorial(); setActivePanel("tutorial"); }} className="text-xs">Show</Button>
         } />
         <CardRow label="Recursive scan depth" rightValue="5" />
         <CardRow label="Quarantine auto-delete" rightValue="30 days" />

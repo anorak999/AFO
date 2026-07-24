@@ -1,5 +1,6 @@
 pub mod capture;
 pub mod cloud_sync;
+pub mod disks;
 pub mod duplicates;
 pub mod journal;
 pub mod metadata;

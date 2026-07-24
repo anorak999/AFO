@@ -332,6 +332,10 @@ export async function setDirEnabled(dir: string, enabled: boolean): Promise<void
   return invoke("set_dir_enabled_cmd", { dir, enabled });
 }
 
+export async function removeDirectory(dir: string): Promise<void> {
+  return invoke("remove_directory_cmd", { dir });
+}
+
 export async function searchFileIndex(query: string, extFilter?: string, limit?: number): Promise<IndexedFile[]> {
   return invoke<IndexedFile[]>("search_file_index", { query, extFilter: extFilter ?? null, limit: limit ?? 50 });
 }
@@ -378,4 +382,17 @@ export async function getCaptureStats(): Promise<CaptureStats> {
 
 export async function getDirStats(dir: string): Promise<DirStats> {
   return invoke<DirStats>("get_dir_stats_cmd", { dir });
+}
+
+export interface DiskInfo {
+  name: string;
+  mount_point: string;
+  total_space: number;
+  available_space: number;
+  file_system: string;
+  is_removable: boolean;
+}
+
+export async function getSystemDisks(): Promise<DiskInfo[]> {
+  return invoke<DiskInfo[]>("get_system_disks");
 }

@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { HardDrive } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FolderOpen, Trash2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { showToast } from "../Toast";
 import { Card, CardHeader, CardDescription } from "../ui/Card";
 import Button from "../ui/Button";
-import { StorageBar, formatBytes, type StorageSegment } from "../ui/StorageBar";
+import { getSystemDisks, type DiskInfo } from "../../lib/tauri-bridge";
+import folderIcon from "../../assets/folder-icon.png";
+import driveIcon from "../../assets/drive-icon.png";
 
 interface CategoryBreakdown {
   label: string;
@@ -15,164 +17,335 @@ interface StorageBreakdownResult {
   directory: string;
   totalScannedBytes: number;
   categories: CategoryBreakdown[];
+  totalSpace: number;
+  availableSpace: number;
 }
 
-const CATEGORY_COLOR: Record<string, string> = {
-  Images: "var(--cat-images)",
-  Documents: "var(--cat-documents)",
-  Audio: "var(--cat-audio)",
-  Video: "var(--cat-video)",
-  Archives: "var(--cat-archives)",
-  Code: "var(--cat-code)",
-  Other: "var(--cat-other)",
+const CATEGORY_COLORS: Record<string, string> = {
+  Images: "#ff3b30",
+  Documents: "#0071E3",
+  Audio: "#af52de",
+  Video: "#ff9500",
+  Archives: "#34c759",
+  Code: "#5856d6",
+  Other: "#aeaeb2",
 };
 
-export default function StoragePanel() {
-  const [directory, setDirectory] = useState<string | null>(null);
-  const [result, setResult] = useState<StorageBreakdownResult | null>(null);
-  const [loading, setLoading] = useState(false);
+const CUSTOM_DIRS_KEY = "afo-custom-storage-dirs";
 
-  async function handleChooseDirectory() {
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function formatCapacity(bytes: number): string {
+  if (bytes === 0) return "0 GB";
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1000) {
+    return `${(gb / 1000).toFixed(0)} TB`;
+  }
+  return `${gb.toFixed(0)} GB`;
+}
+
+// ── Storage Card (shared by disks and custom dirs) ──────────────────
+
+interface StorageCardProps {
+  name: string;
+  mountPoint: string;
+  totalSpace: number;
+  availableSpace: number;
+  isRemovable: boolean;
+  breakdown: StorageBreakdownResult | null;
+  loading: boolean;
+  onScan: (dir: string) => void;
+  onRemove?: () => void;
+}
+
+function StorageCard({ name, mountPoint, totalSpace: propTotalSpace, availableSpace: propAvailableSpace, isRemovable, breakdown, loading, onScan, onRemove }: StorageCardProps) {
+  // Use breakdown's disk space if available (for custom dirs), otherwise use props
+  const totalSpace = breakdown?.totalSpace || propTotalSpace;
+  const availableSpace = breakdown?.availableSpace || propAvailableSpace;
+  const usedSpace = totalSpace - availableSpace;
+  const usagePercent = totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0;
+
+  const segments = breakdown?.categories
+    .filter((c) => c.bytes > 0)
+    .map((c) => ({
+      label: c.label,
+      bytes: c.bytes,
+      color: CATEGORY_COLORS[c.label] ?? "#aeaeb2",
+    })) ?? [];
+
+  return (
+    <div className="flex gap-5 rounded-xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
+      {/* Drive icon */}
+      <div className="flex flex-col items-center gap-2 shrink-0">
+        <img
+          src={isRemovable ? driveIcon : folderIcon}
+          alt=""
+          className="h-16 w-16 object-contain"
+        />
+        <div className="text-center">
+          <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+            {formatCapacity(totalSpace)}
+          </div>
+          <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            {isRemovable ? "External" : "Storage"}
+          </div>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+            {name}
+          </span>
+          <span className="text-xs shrink-0 ml-2" style={{ color: "var(--text-secondary)" }}>
+            {formatBytes(availableSpace)} free of {formatCapacity(totalSpace)}
+          </span>
+        </div>
+
+        {/* Usage bar */}
+        {breakdown ? (
+          <>
+            <div className="h-4 rounded-full overflow-hidden flex" style={{ backgroundColor: "var(--border-default)" }}>
+              {segments.map((s) => (
+                <div
+                  key={s.label}
+                  style={{
+                    width: `${(s.bytes / totalSpace) * 100}%`,
+                    backgroundColor: s.color,
+                  }}
+                />
+              ))}
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+              {segments.map((s) => (
+                <div key={s.label} className="flex items-center gap-1.5 text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                  <span style={{ color: "var(--text-primary)" }}>{s.label}</span>
+                  <span style={{ color: "var(--text-tertiary)" }}>{formatBytes(s.bytes)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="h-4 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border-default)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${usagePercent}%`,
+                  backgroundColor: "var(--accent)",
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                {formatBytes(usedSpace)} used
+              </span>
+              <Button
+                variant="secondary"
+                onClick={() => onScan(mountPoint)}
+                disabled={loading}
+                className="text-[10px] px-2 py-0.5 ml-auto"
+              >
+                {loading ? "Scanning..." : "Scan"}
+              </Button>
+              {onRemove && (
+                <button
+                  onClick={onRemove}
+                  className="p-1 rounded transition-colors"
+                  style={{ color: "var(--text-tertiary)" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--danger)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-tertiary)")}
+                  title="Remove"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Panel ──────────────────────────────────────────────────────
+
+export default function StoragePanel() {
+  const [disks, setDisks] = useState<DiskInfo[]>([]);
+  const [customDirs, setCustomDirs] = useState<string[]>([]);
+  const [breakdowns, setBreakdowns] = useState<Record<string, StorageBreakdownResult>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [loadingDisks, setLoadingDisks] = useState(true);
+  const [newDir, setNewDir] = useState("");
+
+  useEffect(() => {
+    loadDisks();
+    loadCustomDirs();
+  }, []);
+
+  async function loadDisks() {
+    try {
+      const diskList = await getSystemDisks();
+      setDisks(diskList);
+    } catch (e) {
+      showToast(`Failed to load disks: ${e}`, "error");
+    } finally {
+      setLoadingDisks(false);
+    }
+  }
+
+  function loadCustomDirs() {
+    try {
+      const saved = localStorage.getItem(CUSTOM_DIRS_KEY);
+      if (saved) setCustomDirs(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }
+
+  function saveCustomDirs(dirs: string[]) {
+    setCustomDirs(dirs);
+    localStorage.setItem(CUSTOM_DIRS_KEY, JSON.stringify(dirs));
+  }
+
+  async function handleAddDir() {
+    const dir = newDir.trim();
+    if (!dir) return;
+    if (customDirs.includes(dir)) {
+      showToast("Directory already added", "info");
+      return;
+    }
+    saveCustomDirs([...customDirs, dir]);
+    setNewDir("");
+    showToast(`Added: ${dir}`, "success");
+  }
+
+  async function handlePickDir() {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({ directory: true, multiple: false });
       if (selected && typeof selected === "string") {
-        setDirectory(selected);
-        await handleScan(selected);
+        setNewDir(selected);
       }
     } catch (e) {
       showToast(`Directory picker failed: ${e}`, "error");
     }
   }
 
+  function handleRemoveDir(dir: string) {
+    saveCustomDirs(customDirs.filter((d) => d !== dir));
+    // Also remove breakdown
+    setBreakdowns((prev) => {
+      const next = { ...prev };
+      delete next[dir];
+      return next;
+    });
+    showToast(`Removed: ${dir}`, "info");
+  }
+
   async function handleScan(dir: string) {
-    setLoading(true);
-    setResult(null);
+    setLoading((prev) => ({ ...prev, [dir]: true }));
     try {
       const data = await invoke<StorageBreakdownResult>("scan_storage_breakdown", {
         directory: dir,
       });
-      setResult(data);
+      setBreakdowns((prev) => ({ ...prev, [dir]: data }));
     } catch (e) {
       showToast(`Scan failed: ${e}`, "error");
     } finally {
-      setLoading(false);
+      setLoading((prev) => ({ ...prev, [dir]: false }));
     }
   }
-
-  const segments: StorageSegment[] =
-    result?.categories
-      .filter((c) => c.bytes > 0)
-      .map((c) => ({
-        label: c.label,
-        bytes: c.bytes,
-        color: CATEGORY_COLOR[c.label] ?? "var(--cat-other)",
-      })) ?? [];
-
-  // Defensive: compute total from categories if backend field is missing/malformed
-  const totalBytes =
-    result?.totalScannedBytes ||
-    result?.categories.reduce((sum, c) => sum + c.bytes, 0) ||
-    0;
 
   return (
     <div className="flex flex-col gap-5 p-6">
       <div>
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          style={{ color: "var(--text-primary)" }}
-        >
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
           Storage
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          See what's using space in a directory you point AFO at.
+          See what's using space on your drives.
         </p>
       </div>
 
-      {/* Source */}
+      {/* Source input */}
       <Card>
         <CardHeader>Source</CardHeader>
-        <CardDescription>
-          Choose a directory to see its storage breakdown by file type.
-        </CardDescription>
-        <div className="flex items-center gap-3 mt-2">
-          <Button
-            variant="secondary"
-            onClick={handleChooseDirectory}
-            disabled={loading}
-            className="gap-2"
-          >
-            <HardDrive size={14} /> Choose Directory
+        <CardDescription>Add a custom directory to analyze.</CardDescription>
+        <div className="flex items-center gap-2 mt-2">
+          <Button variant="secondary" onClick={handlePickDir} className="gap-1 text-xs">
+            <FolderOpen size={12} /> Choose Directory
           </Button>
-          <div
-            className="flex-1 truncate rounded-lg px-3 py-2 text-sm"
-            style={{
-              backgroundColor: "var(--bg-inset)",
-              color: directory ? "var(--text-primary)" : "var(--text-tertiary)",
-            }}
-          >
-            {directory || "No directory selected"}
-          </div>
+          <input
+            type="text"
+            value={newDir}
+            onChange={(e) => setNewDir(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddDir()}
+            placeholder="/path/to/directory"
+            className="flex-1 rounded-lg px-3 py-1.5 text-sm outline-none"
+            style={{ backgroundColor: "var(--bg-inset)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
+          />
+          <Button onClick={handleAddDir} disabled={!newDir.trim()} className="text-xs">Add</Button>
         </div>
       </Card>
 
-      {/* Breakdown */}
-      <Card>
-        <CardHeader>Storage Breakdown</CardHeader>
-        <div className="px-[18px] py-5">
-          {!result && (
-            <div
-              className="py-6 text-center text-[13px]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {loading ? "Scanning…" : "Choose a directory to see its breakdown."}
-            </div>
-          )}
-          {result && (
-            <>
-              <div className="mb-3.5 flex items-baseline justify-between">
-                <span
-                  className="text-[13.5px] font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {result.directory}
-                </span>
-                <span
-                  className="text-[12.5px]"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {formatBytes(totalBytes)} scanned
-                </span>
-              </div>
-              <StorageBar
-                segments={segments}
-                totalBytes={totalBytes}
-              />
-              <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2.5">
-                {segments.map((s) => (
-                  <div
-                    key={s.label}
-                    className="flex items-center gap-2 text-[12.5px]"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    <span
-                      className="h-[9px] w-[9px] flex-none rounded-[3px]"
-                      style={{ backgroundColor: s.color }}
-                    />
-                    {s.label}
-                    <span
-                      className="ml-auto text-[12px]"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {formatBytes(s.bytes)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+      {/* System drives */}
+      {loadingDisks ? (
+        <Card>
+          <p className="text-sm text-center py-4" style={{ color: "var(--text-tertiary)" }}>
+            Loading disks...
+          </p>
+        </Card>
+      ) : disks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            System Drives
+          </h3>
+          {disks.map((disk) => (
+            <StorageCard
+              key={disk.mount_point}
+              name={disk.name || disk.mount_point}
+              mountPoint={disk.mount_point}
+              totalSpace={disk.total_space}
+              availableSpace={disk.available_space}
+              isRemovable={disk.is_removable}
+              breakdown={breakdowns[disk.mount_point] || null}
+              loading={loading[disk.mount_point] || false}
+              onScan={handleScan}
+            />
+          ))}
         </div>
-      </Card>
+      )}
+
+      {/* Custom directories */}
+      {customDirs.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Custom Directories
+          </h3>
+          {customDirs.map((dir) => (
+            <StorageCard
+              key={dir}
+              name={dir}
+              mountPoint={dir}
+              totalSpace={0}
+              availableSpace={0}
+              isRemovable={false}
+              breakdown={breakdowns[dir] || null}
+              loading={loading[dir] || false}
+              onScan={handleScan}
+              onRemove={() => handleRemoveDir(dir)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

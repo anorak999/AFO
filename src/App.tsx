@@ -10,9 +10,11 @@ import DuplicatesPanel from "./components/DuplicatesPanel";
 import StoragePanel from "./components/StoragePanel";
 import HistoryPanel from "./components/HistoryPanel";
 import SettingsPanel from "./components/SettingsPanel";
+import TutorialPanel from "./components/TutorialPanel";
 import CommandPalette from "./components/CommandPalette";
 import ToastContainer, { showToast } from "./components/Toast";
 import DropZone from "./components/DropZone";
+import { shouldShowTutorial } from "./components/Tutorial";
 
 const panels = {
   organize: OrganizePanel,
@@ -22,6 +24,7 @@ const panels = {
   storage: StoragePanel,
   history: HistoryPanel,
   settings: SettingsPanel,
+  tutorial: TutorialPanel,
 } as const;
 
 function ActivePanel() {
@@ -40,6 +43,13 @@ function ActivePanel() {
 export default function App() {
   const setActivePanel = useAppStore((s) => s.setActivePanel);
   const setDroppedPaths = useAppStore((s) => s.setDroppedPaths);
+
+  // Show tutorial on first launch
+  useEffect(() => {
+    if (shouldShowTutorial()) {
+      setActivePanel("tutorial");
+    }
+  }, [setActivePanel]);
 
   const handleFilesDropped = useCallback(
     (paths: string[]) => {

@@ -117,6 +117,7 @@ pub fn run() {
             commands::set_scan_interval_cmd,
             commands::toggle_always_allow_cmd,
             commands::set_dir_enabled_cmd,
+            commands::remove_directory_cmd,
             commands::search_file_index,
             commands::get_indexed_files_cmd,
             commands::scan_and_index_cmd,
@@ -130,6 +131,7 @@ pub fn run() {
             commands::get_capture_stats_cmd,
             commands::get_dir_stats_cmd,
             commands::scan_storage_breakdown,
+            commands::get_system_disks,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
