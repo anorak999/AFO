@@ -1,7 +1,7 @@
 # Task: integrate the "Native" design system into AFO
 
 Context: AFO is a Tauri v2 + React 18 + TypeScript + Tailwind CSS desktop
-app (repo: anorak999/AFO). We're replacing the current basic UI with a
+app (repo: Himath-Rajapaksha/AFO). We're replacing the current basic UI with a
 macOS System-Settings-inspired design system, applied to the app's real
 screens (Organize, Rule Builder, Duplicates, History, Settings) rather
 than a literal settings list. It must ship with a light theme (default)

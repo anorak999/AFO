@@ -226,9 +226,9 @@ function AboutSection() {
   async function openGitHub() {
     try {
       const { open } = await import("@tauri-apps/plugin-shell");
-      await open("https://github.com/anorak999/AFO");
+      await open("https://github.com/Himath-Rajapaksha/AFO");
     } catch {
-      window.open("https://github.com/anorak999/AFO", "_blank");
+      window.open("https://github.com/Himath-Rajapaksha/AFO", "_blank");
     }
   }
 

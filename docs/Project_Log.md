@@ -80,7 +80,7 @@ Development log. Append-only. Every commit, push, code change, and decision is r
 
 ### Phase 1 Completion (2025-07-20)
 - Ran `npm install` — generated `package-lock.json` (193 packages)
-- Created GitHub repo `https://github.com/anorak999/AF0` via `gh repo create AF0 --private`
+- Created GitHub repo `https://github.com/Himath-Rajapaksha/AF0` via `gh repo create AF0 --private`
 - First commit: `feat: initial Tauri v2 scaffold with React frontend and Rust backend` (49 files)
 - Pushed to `origin/master`
 - Frontend builds successfully (`npm run build` — Vite production build OK)
