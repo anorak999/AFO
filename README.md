@@ -158,7 +158,7 @@ The v2.5 release introduces a macOS System Settings-inspired design system:
 ### From Source
 
 ```bash
-git clone https://github.com/anorak999/AFO.git
+git clone https://github.com/Himath-Rajapaksha/AFO.git
 cd AFO
 npm install
 cargo tauri dev
@@ -166,7 +166,7 @@ cargo tauri dev
 
 ### From Release
 
-Download the latest release from [GitHub Releases](https://github.com/anorak999/AFO/releases):
+Download the latest release from [GitHub Releases](https://github.com/Himath-Rajapaksha/AFO/releases):
 
 | Platform | Format | Install |
 |:---------|:-------|:--------|
