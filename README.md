@@ -14,7 +14,7 @@
 
 <br/>
 
-<img src="Screenshots/Gif/Preview Gif.gif" width="850" alt="AFO screenshot" />
+<img src="Screenshots/Gif/Prev-AFO.gif" width="850" alt="AFO screenshot" />
 
 <br/><br/>
 
