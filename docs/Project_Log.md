@@ -1253,3 +1253,34 @@ Production release with new app icon, version bump to 3.0.0, all features from v
 - Artifacts:
   - `AFO_3.0.0_amd64.deb`
   - `AFO-3.0.0-1.x86_64.rpm`
+
+
+## 2026-07-24 — v3.0.0 Icon Update & Desktop Icon Caching Issue
+
+### Icon Replacement
+- `8863e8e` fix: replace all icons with new blue AFO icon
+  - Replaced `src-tauri/icons/icon.png` and all size variants (32x32, 64x64, 128x128, 128x128@2x) with new blue icon (45KB each)
+  - Updated `src/assets/logo.png` for sidebar rendering
+  - All PNG variants are identical copies of the source `AFO-icon.png`
+
+### Desktop Icon Caching Issue (In Progress)
+- **Problem**: After installing the v3.0.0 DEB package, GNOME Activities still shows the old orange icon
+- **Root cause**: GNOME caches app icons in `/usr/share/icons/hicolor/`. The DEB package includes new icons at 2048x2048@2, but the installed system uses cached versions
+- **Investigation**:
+  - New icons are present in the DEB: `/usr/share/icons/hicolor/2048x2048@2/apps/afo.png` (45KB)
+  - The app's sidebar icon (loaded from `src/assets/logo.png`) correctly shows the new blue icon
+  - The desktop/launcher icon (loaded from system icon theme) still shows old orange
+  - GNOME icon cache may need manual refresh via `gtk-update-icon-cache`
+  - Also checked: `.icns` (macOS) and `.ico` (Windows) files are still old versions — not updated from new PNG
+
+### Files Modified
+- `src-tauri/icons/icon.png` — replaced with new blue icon
+- `src-tauri/icons/32x32.png` — replaced with new blue icon
+- `src-tauri/icons/64x64.png` — replaced with new blue icon
+- `src-tauri/icons/128x128.png` — replaced with new blue icon
+- `src-tauri/icons/128x128@2x.png` — replaced with new blue icon
+- `src/assets/logo.png` — replaced with new blue icon
+
+### Pending
+- Desktop/launcher icon still shows old orange — needs icon cache refresh or rebuild
+- `.icns` and `.ico` files not yet regenerated from new PNG
