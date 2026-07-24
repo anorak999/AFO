@@ -1,6 +1,8 @@
 <div align="center">
 
-# ⚡ AFO — Advanced File Organizer
+<img src="AFO-icon-3.0.0.png" alt="AFO Logo" width="120" />
+
+# AFO — Advanced File Organizer
 
 **Tauri v2 · Rust · React · TypeScript**
 
