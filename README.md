@@ -70,6 +70,36 @@ Cross-platform desktop file organization with rule-based sorting, duplicate dete
 
 ---
 
+## v3.0.0 — Major Release
+
+### Tutorial Panel
+- Dedicated tutorial panel in sidebar (no modal overlay)
+- 6-step onboarding: Welcome, Quick Start, Features, How It Works, Tips, Ready
+- Minimal design: clickable dot indicators, single action button
+- Auto-navigates on first launch, re-openable from Settings
+
+### Storage Redesign (macOS Style)
+- Auto-detects system drives with `sysinfo` crate
+- Drive icons: folder for internal, drive for external
+- Custom directory analysis with localStorage persistence
+- Category breakdown with colored segments and legend
+- Shows free/total space, usage percentage
+
+### Live Capture Improvements
+- Remove directory button for watched folders
+- Backend: `remove_directory` command for config cleanup
+
+### Accent Color Update
+- New accent: `#0071E3` (light) / `#409cff` (dark)
+- Consistent across all UI elements
+
+### Bug Fixes
+- CommandPalette: stopPropagation prevents accidental close
+- Modal overlay bugs eliminated (tutorial now a panel)
+- Storage bar now works for custom directories
+
+---
+
 ## v2.5.2 — GitHub-Style Buttons & UI Refinements
 
 - **GitHub-style buttons** — clean, minimal button design with subtle shadows and hover effects (primary/secondary/danger variants)
@@ -138,8 +168,8 @@ Download the latest release from [GitHub Releases](https://github.com/anorak999/
 
 | Platform | Format | Install |
 |:---------|:-------|:--------|
-| Linux | `.deb` | `sudo dpkg -i AFO_2.5.2_amd64.deb` |
-| Linux | `.rpm` | `sudo rpm -i AFO-2.5.2-1.x86_64.rpm` |
+| Linux | `.deb` | `sudo dpkg -i AFO_3.0.0_amd64.deb` |
+| Linux | `.rpm` | `sudo rpm -i AFO-3.0.0-1.x86_64.rpm` |
 | Windows | `.exe` | Run the NSIS installer |
 | macOS | `.dmg` | Open and drag to Applications |
 

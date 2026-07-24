@@ -1217,3 +1217,39 @@ Major UI improvements: tutorial as dedicated panel, macOS-style storage redesign
 ### Version
 - Tag: `v2.5.50-beta`
 - Artifact: `AFO_2.5.50-beta_amd64.deb`
+
+
+## 2026-07-23 — v3.0.0: Major Release
+
+### Summary
+Production release with new app icon, version bump to 3.0.0, all features from v2.5.50-beta finalized.
+
+### Changes
+- New blue app icon (AFO-icon.png) replacing old icon
+- Version bumped to 3.0.0 across all manifest files
+- All v2.5.50-beta features finalized:
+  - Tutorial as dedicated panel
+  - macOS-style storage redesign with drive detection
+  - Live capture directory removal
+  - Accent color #0071E3
+  - CommandPalette stopPropagation fix
+
+### Files Modified
+- `src-tauri/icons/` — replaced all icon sizes with new blue icon
+- `package.json` — version 3.0.0
+- `src-tauri/Cargo.toml` — version 3.0.0
+- `src-tauri/tauri.conf.json` — version 3.0.0
+- `src/components/Sidebar/Sidebar.tsx` — version label v3.0.0
+- `src/components/SettingsPanel/SettingsPanel.tsx` — version 3.0.0
+- `README.md` — updated version references, added v3.0.0 changelog
+- `docs/Project_Log.md` — added v3.0.0 release entry
+
+### Build Verification
+- `npx tsc --noEmit` — ✅ Clean
+- `cargo tauri build --bundles deb,rpm` — ✅ Both packages built
+
+### Release
+- Tag: `v3.0.0`
+- Artifacts:
+  - `AFO_3.0.0_amd64.deb`
+  - `AFO-3.0.0-1.x86_64.rpm`
